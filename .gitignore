@@ -1,0 +1,8 @@
+node_modules/
+.dist/
+dist/
+coverage/
+.supasec/
+*.log
+.DS_Store 
+design.md
