@@ -4,5 +4,8 @@ dist/
 coverage/
 .supasec/
 *.log
-.DS_Store 
+.DS_Store
 design.md
+.env
+.env.local
+.env.*.local
