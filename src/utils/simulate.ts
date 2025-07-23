@@ -44,7 +44,6 @@ export async function probe(
     return result;
     
   } catch (error) {
-    console.log(`    🚨 Error in probe: ${error instanceof Error ? error.message : error}`);
     return 'ERROR';
   } finally {
     await client.query('ROLLBACK');
@@ -65,7 +64,7 @@ async function executeOperation(
       case 'SELECT': {
         // Test actual data access, not just dummy query
         const result = await client.query(`SELECT * FROM ${fullTable} LIMIT 1`);
-        return 'ALLOW';
+        return result.rows.length > 0 ? 'ALLOW' : 'DENY';
       }
       
       case 'INSERT': {
@@ -89,7 +88,10 @@ async function executeOperation(
           insertColumns.push(`"${col.column_name}"`);
           
           // Use appropriate test values based on column type
-          if (col.column_name === 'user_id' && col.data_type === 'uuid') {
+          if (col.column_name === 'id' && col.data_type === 'uuid') {
+            // For primary key id columns, use auth.uid() to match RLS policies
+            insertValues.push('auth.uid()');
+          } else if (col.column_name === 'user_id' && col.data_type === 'uuid') {
             insertValues.push('auth.uid()');
           } else if (col.data_type === 'uuid') {
             insertValues.push(`'${randomUUID()}'`);
@@ -114,14 +116,16 @@ async function executeOperation(
 
       case 'UPDATE': {
         // Try to update existing records - use a simple update that should trigger RLS
-        await client.query(`UPDATE ${fullTable} SET id = id WHERE true`);
-        return 'ALLOW';
+        const res = await client.query(`UPDATE ${fullTable} SET id = id WHERE true`);
+        const affected = res.rowCount ?? 0;
+        return affected > 0 ? 'ALLOW' : 'DENY';
       }
 
       case 'DELETE': {
         // Try to delete with a condition that might match - RLS should block if not allowed
-        await client.query(`DELETE FROM ${fullTable} WHERE 1=1`);
-        return 'ALLOW';
+        const res = await client.query(`DELETE FROM ${fullTable} WHERE 1=1`);
+        const del = res.rowCount ?? 0;
+        return del > 0 ? 'ALLOW' : 'DENY';
       }
 
       default:
@@ -130,6 +134,10 @@ async function executeOperation(
   } catch (error: any) {
     if (error.code === '42501' || error.message?.includes('permission denied') || error.message?.includes('policy')) {
       return 'DENY';
+    }
+    // Duplicate key errors mean RLS allowed the operation, just data already exists
+    if (error.code === '23505') {
+      return 'ALLOW';
     }
     return 'ALLOW'; // Other errors (like syntax errors) still mean the operation was attempted
   }
