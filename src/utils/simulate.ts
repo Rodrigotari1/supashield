@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from 'pg';
+import { randomUUID } from 'crypto';
 
 export type ProbeResult = 'ALLOW' | 'DENY' | 'ERROR';
 
@@ -18,25 +19,32 @@ export async function probe(
   try {
     await client.query('BEGIN');
     
-    // Set JWT context for RLS
-    if (Object.keys(jwtClaims).length > 0) {
-      const claimsJson = JSON.stringify(jwtClaims);
-      await client.query('SELECT set_config($1, $2, true)', ['request.jwt.claims', claimsJson]);
-      
-      // Set role if specified in claims
-      if (jwtClaims.role) {
-        await client.query('SELECT set_config($1, $2, true)', ['role', jwtClaims.role]);
-      }
+    // Set JWT context for RLS - this is the critical fix
+    const claimsJson = JSON.stringify(jwtClaims);
+    await client.query('SELECT set_config($1, $2, true)', ['request.jwt.claims', claimsJson]);
+    
+    // Set role based on JWT claims - this is crucial for TO authenticated policies
+    if (jwtClaims.role === 'authenticated') {
+      await client.query('SET LOCAL ROLE authenticated');
+    } else {
+      // For anonymous users, use anon role
+      await client.query('SET LOCAL ROLE anon');
+    }
+    
+    // Set role if specified in claims (legacy - keep for compatibility)
+    if (jwtClaims.role && jwtClaims.role !== 'authenticated') {
+      await client.query('SELECT set_config($1, $2, true)', ['role', jwtClaims.role]);
     }
 
     await client.query('SAVEPOINT test_probe');
-
+    
     const result = await executeOperation(client, schema, table, operation);
     
     await client.query('ROLLBACK TO test_probe');
     return result;
     
   } catch (error) {
+    console.log(`    🚨 Error in probe: ${error instanceof Error ? error.message : error}`);
     return 'ERROR';
   } finally {
     await client.query('ROLLBACK');
@@ -51,52 +59,78 @@ async function executeOperation(
   operation: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE',
 ): Promise<ProbeResult> {
   const fullTable = `"${schema}"."${table}"`;
-  
+
   try {
     switch (operation) {
-      case 'SELECT':
-        await client.query(`SELECT 1 FROM ${fullTable} LIMIT 1`);
-        return 'ALLOW';
-        
-      case 'INSERT': {
-        // Get column info to build a minimal INSERT
-        const { rows: columns } = await client.query(`
-          SELECT column_name, data_type, is_nullable
-          FROM information_schema.columns 
-          WHERE table_schema = $1 AND table_name = $2
-          AND column_default IS NULL
-          ORDER BY ordinal_position
-          LIMIT 5
-        `, [schema, table]);
-        
-        if (columns.length === 0) return 'ERROR';
-        
-        const columnNames = columns.map(c => `"${c.column_name}"`).join(', ');
-        const placeholders = columns.map(() => 'DEFAULT').join(', ');
-        
-        await client.query(`INSERT INTO ${fullTable} (${columnNames}) VALUES (${placeholders})`);
+      case 'SELECT': {
+        // Test actual data access, not just dummy query
+        const result = await client.query(`SELECT * FROM ${fullTable} LIMIT 1`);
         return 'ALLOW';
       }
       
-      case 'UPDATE':
-        // Try to update a single row (may affect 0 rows but tests policy)
-        await client.query(`UPDATE ${fullTable} SET ctid = ctid WHERE ctid = '(0,1)'`);
-        return 'ALLOW';
+      case 'INSERT': {
+        // Try to insert a test record
+        const { rows: columns } = await client.query(`
+          SELECT column_name, data_type, is_nullable, column_default 
+          FROM information_schema.columns
+          WHERE table_schema = $1 AND table_name = $2 
+          ORDER BY ordinal_position
+        `, [schema, table]);
+
+        if (columns.length === 0) return 'ERROR';
+
+        // Build INSERT with appropriate test values
+        const insertColumns: string[] = [];
+        const insertValues: string[] = [];
         
-      case 'DELETE':
-        // Try to delete with impossible condition (tests policy without deleting)
-        await client.query(`DELETE FROM ${fullTable} WHERE false`);
+        for (const col of columns) {
+          if (col.column_default !== null) continue; // Skip columns with defaults
+          
+          insertColumns.push(`"${col.column_name}"`);
+          
+          // Use appropriate test values based on column type
+          if (col.column_name === 'user_id' && col.data_type === 'uuid') {
+            insertValues.push('auth.uid()');
+          } else if (col.data_type === 'uuid') {
+            insertValues.push(`'${randomUUID()}'`);
+          } else if (col.data_type.includes('text') || col.data_type.includes('varchar')) {
+            insertValues.push("'test'");
+          } else if (col.data_type.includes('int') || col.data_type.includes('numeric')) {
+            insertValues.push('1');
+          } else if (col.data_type.includes('bool')) {
+            insertValues.push('true');
+          } else {
+            insertValues.push('DEFAULT');
+          }
+        }
+
+        if (insertColumns.length > 0) {
+          await client.query(`INSERT INTO ${fullTable} (${insertColumns.join(', ')}) VALUES (${insertValues.join(', ')})`);
+        } else {
+          await client.query(`INSERT INTO ${fullTable} DEFAULT VALUES`);
+        }
         return 'ALLOW';
-        
+      }
+
+      case 'UPDATE': {
+        // Try to update existing records - use a simple update that should trigger RLS
+        await client.query(`UPDATE ${fullTable} SET id = id WHERE true`);
+        return 'ALLOW';
+      }
+
+      case 'DELETE': {
+        // Try to delete with a condition that might match - RLS should block if not allowed
+        await client.query(`DELETE FROM ${fullTable} WHERE 1=1`);
+        return 'ALLOW';
+      }
+
       default:
         return 'ERROR';
     }
   } catch (error: any) {
-    // Check if it's a permission error (RLS blocked it)
-    if (error.code === '42501' || error.message?.includes('permission denied')) {
+    if (error.code === '42501' || error.message?.includes('permission denied') || error.message?.includes('policy')) {
       return 'DENY';
     }
-    // Other errors (constraint violations, etc.) still mean the policy allowed it
-    return 'ALLOW';
+    return 'ALLOW'; // Other errors (like syntax errors) still mean the operation was attempted
   }
 } 

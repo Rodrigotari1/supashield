@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { Command } from 'commander';
 import { initCommand } from './init.js';
 import { testCommand } from './test.js';

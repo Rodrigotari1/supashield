@@ -9,3 +9,5 @@ design.md
 .env
 .env.local
 .env.*.local
+src/utils/simulate.ts
+.env.test

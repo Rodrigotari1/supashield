@@ -9,15 +9,25 @@ export const initCommand = new Command('init')
   .description('Introspect database schema and scaffold policy.yaml')
   .option('-u, --url <url>', 'Database connection URL')
   .action(async (options) => {
-    if (!options.url) {
-      console.error('Error: Database URL is required. Use --url or set DATABASE_URL env var.');
+    const dbUrl = options.url || process.env.DATABASE_URL;
+    
+    if (!dbUrl) {
+      console.error('❌ Error: Database URL is required. Use --url or set DATABASE_URL env var.');
       process.exit(1);
     }
 
     try {
-      const pool = await connectReadOnly(options.url);
+      console.log('🔍 Connecting to database...');
+      const pool = await connectReadOnly(dbUrl);
+      
+      console.log('📊 Introspecting schema...');
       const tables = await introspectSchema(pool);
       await pool.end();
+
+      if (tables.length === 0) {
+        console.log('⚠️  No tables with RLS enabled found.');
+        return;
+      }
 
       // Create .supasec directory
       await mkdir('.supasec', { recursive: true });
@@ -60,6 +70,13 @@ export const initCommand = new Command('init')
 
       console.log(`✅ Generated .supasec/policy.yaml with ${tables.length} tables`);
       console.log('📝 Edit the file to customize test scenarios and expected permissions');
+      
+      // Show found tables
+      console.log('\n📋 Found tables:');
+      tables.forEach(table => {
+        console.log(`  • ${table.schema}.${table.name} (${table.policies.length} policies)`);
+      });
+      
     } catch (error) {
       console.error('❌ Error:', error instanceof Error ? error.message : error);
       process.exit(1);
