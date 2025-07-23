@@ -47,9 +47,7 @@ export const testCommand = new Command('test')
       logger.succeed('Policy configuration loaded.');
 
       logger.start(CONSOLE_MESSAGES.CONNECTING);
-      const connectionConfig = createDatabaseConnectionConfig(dbUrl, {
-        role_validation_enabled: false,
-      });
+      const connectionConfig = createDatabaseConnectionConfig(dbUrl);
       const pool = await establishValidatedDatabaseConnection(connectionConfig);
       logger.succeed('Connected to database.');
 

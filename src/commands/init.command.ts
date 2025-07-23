@@ -22,7 +22,6 @@ import {
 export const initCommand = new Command('init')
   .description('Introspect database schema and scaffold policy.yaml')
   .option('-u, --url <url>', 'Database connection URL')
-  .option('--role-validation', 'Enable database role validation (default: disabled)')
   .option('--verbose', 'Enable verbose logging')
   .action(async (options) => {
     const logger = createLogger(options.verbose);
@@ -35,9 +34,7 @@ export const initCommand = new Command('init')
 
     try {
       logger.start(CONSOLE_MESSAGES.CONNECTING);
-      const connectionConfig = createDatabaseConnectionConfig(dbUrl, {
-        role_validation_enabled: options.roleValidation || false,
-      });
+      const connectionConfig = createDatabaseConnectionConfig(dbUrl);
       const pool = await establishValidatedDatabaseConnection(connectionConfig);
       logger.succeed('Connected to database.');
 

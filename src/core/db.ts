@@ -16,9 +16,8 @@ export async function establishValidatedDatabaseConnection(
   try {
     const pool = await createDatabaseConnectionPool(connectionConfig);
     
-    if (connectionConfig.role_validation_enabled) {
-      await validateDatabaseRolePrivileges(pool);
-    }
+    // The role validation is now always enabled by default for safety.
+    await validateDatabaseRolePrivileges(pool);
     
     return pool;
   } catch (error) {
