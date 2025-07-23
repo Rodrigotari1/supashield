@@ -99,7 +99,7 @@ async function introspectCurrentRolePrivileges(client: PoolClient): Promise<Data
   `);
 
   const [row] = rows;
-  
+
   return {
     role_name: row.role,
     has_global_dml: row.has_global_dml,
@@ -113,18 +113,21 @@ async function introspectCurrentRolePrivileges(client: PoolClient): Promise<Data
  * Determines if a database role should be rejected for safety reasons.
  */
 function shouldRejectRoleForSafetyReasons(privileges: DatabaseRolePrivileges): boolean {
-  // Allow superuser roles for now (can be configured)
-  // In production, you might want to be more strict
-  return privileges.has_global_dml || privileges.has_create_privilege;
+  // Reject superusers and roles with dangerous global DML or CREATE privileges.
+  return privileges.is_superuser || privileges.has_global_dml || privileges.has_create_privilege;
 }
 
 /**
  * Creates an appropriate error for unsafe database roles.
  */
 function createUnsafeRoleError(privileges: DatabaseRolePrivileges): Error {
+  let reason = 'it has dangerous global privileges.';
+  if (privileges.is_superuser) {
+    reason = 'it is a superuser.';
+  }
   return new Error(
-    `Role "${privileges.role_name}" has dangerous global privileges. ` +
-    'Use a role with only table-specific DML privileges for testing.'
+    `Role "${privileges.role_name}" is unsafe for testing because ${reason} ` +
+    'Use a dedicated, non-superuser role with only table-specific DML privileges for testing.'
   );
 }
 
