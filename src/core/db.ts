@@ -1,6 +1,6 @@
 import { Pool, PoolClient } from 'pg';
-import type { DatabaseConnectionConfig, DatabaseRolePrivileges } from './types.js';
-import { DEFAULT_CONNECTION_CONFIG } from './constants.js';
+import type { DatabaseConnectionConfig, DatabaseRolePrivileges } from '../shared/types.js';
+import { DEFAULT_CONNECTION_CONFIG } from '../shared/constants.js';
 
 export interface ReadOnlyPool extends Pool {}
 

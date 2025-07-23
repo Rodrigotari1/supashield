@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { Command } from 'commander';
-import { initCommand } from './init.js';
-import { testCommand } from './test.js';
+import { initCommand } from './commands/init.command.js';
+import { testCommand } from './commands/test.command.js';
 
 const program = new Command();
 

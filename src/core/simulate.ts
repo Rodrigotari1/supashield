@@ -1,11 +1,11 @@
 import type { Pool, PoolClient } from 'pg';
 import { randomUUID } from 'crypto';
-import type { ProbeResult, DatabaseOperation, ColumnIntrospectionResult } from './types.js';
+import type { ProbeResult, DatabaseOperation, ColumnIntrospectionResult } from '../shared/types.js';
 import { 
   SQL_ERROR_CODES, 
   POSTGRESQL_SYSTEM_ROLES,
   COLUMN_TYPE_TEST_VALUES 
-} from './constants.js';
+} from '../shared/constants.js';
 
 /**
  * Tests if a specific database operation is allowed for a user with given JWT claims.

@@ -1,0 +1,105 @@
+import chalk from 'chalk';
+import ora, { Ora } from 'ora';
+
+// --- Interfaces ---
+export interface Logger {
+  start(text: string): void;
+  succeed(text: string): void;
+  fail(text: string): void;
+  info(text: string): void;
+  warn(text: string): void;
+  error(text: string, error?: unknown): void;
+  raw(text: string): void;
+  getSpinner(): Ora;
+}
+
+// --- Factory ---
+/**
+ * Creates a new logger instance.
+ * @param verbose - Whether to enable verbose logging.
+ * @returns A logger instance.
+ */
+export function createLogger(verbose = false): Logger {
+  let spinner = ora({ isSilent: !process.stdout.isTTY });
+
+  return {
+    start: (text: string) => {
+      spinner.start(text);
+    },
+    succeed: (text: string) => {
+      spinner.succeed(chalk.green(text));
+    },
+    fail: (text: string) => {
+      spinner.fail(chalk.red(text));
+    },
+    info: (text: string) => {
+      console.log(chalk.blue(`ℹ ${text}`));
+    },
+    warn: (text: string) => {
+      console.log(chalk.yellow(`⚠️ ${text}`));
+    },
+    error: (text: string, error?: unknown) => {
+      console.error(chalk.red(`❌ Error: ${text}`));
+      if (verbose && error instanceof Error) {
+        console.error(chalk.gray(error.stack || error.message));
+      }
+    },
+    raw: (text: string) => {
+      console.log(text);
+    },
+    getSpinner: () => spinner,
+  };
+}
+
+// --- Test Result Formatting ---
+/**
+ * Formats a single test result for console output.
+ * @param result - The detailed test result.
+ * @returns A formatted string.
+ */
+export function formatTestResult(result: any): string {
+  const icon = result.passed ? chalk.green('✅') : chalk.red('❌');
+  const operation = result.operation.padEnd(6, ' ');
+  const status = result.passed
+    ? chalk.green(`${result.actual} (expected ${result.expected})`)
+    : chalk.red(`${result.actual} (expected ${result.expected}) - MISMATCH!`);
+
+  return `    ${icon} ${operation}: ${status}`;
+}
+
+/**
+ * Formats the final summary of all test results.
+ * @param results - The aggregated test results.
+ * @returns A formatted string for the summary.
+ */
+export function formatSummary(results: any): string {
+  const summary = [
+    chalk.bold('\n📊 Test Results:'),
+    `  Total tests: ${results.total_tests}`,
+    chalk.green(`  Passed: ${results.passed_tests} ✅`),
+    chalk.red(`  Failed: ${results.failed_tests} ❌`),
+  ];
+
+  if (results.error_tests > 0) {
+    summary.push(chalk.red.bold(`  Errors: ${results.error_tests} 🔥`));
+  }
+
+  summary.push(`  Execution time: ${Math.round(results.execution_time_ms)}ms`);
+
+  return summary.join('\n');
+}
+
+// --- Table Formatting ---
+/**
+ * Formats a list of discovered tables for console output.
+ * @param tables - An array of tables with their schema and policy count.
+ * @returns A formatted string.
+ */
+export function formatDiscoveredTables(tables: any[]): string {
+  const formattedTables = tables.map(table => {
+    const tableKey = `${table.schema}.${table.name}`;
+    return `  • ${tableKey} (${table.policies.length} policies)`;
+  });
+
+  return `\n📋 Found tables:\n${formattedTables.join('\n')}`;
+} 

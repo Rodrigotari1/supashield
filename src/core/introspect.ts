@@ -1,6 +1,6 @@
 import type { Pool, PoolClient } from 'pg';
-import type { TableMeta, PolicyInfo } from './types.js';
-import { EXCLUDED_SCHEMAS_FROM_INTROSPECTION } from './constants.js';
+import type { TableMeta, PolicyInfo } from '../shared/types.js';
+import { EXCLUDED_SCHEMAS_FROM_INTROSPECTION } from '../shared/constants.js';
 
 /**
  * Introspects the database schema to discover all tables with RLS enabled and their policies.

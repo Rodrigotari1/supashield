@@ -1,44 +1,53 @@
 import { Command } from 'commander';
 import { writeFile, mkdir } from 'fs/promises';
 import { stringify } from 'yaml';
-import { 
-  establishValidatedDatabaseConnection, 
-  createDatabaseConnectionConfig 
-} from './utils/db.js';
-import { introspectSchema } from './utils/introspect.js';
-import type { PolicyConfig, TableTestConfiguration } from './utils/types.js';
-import { 
-  DEFAULT_TEST_CONFIGURATION, 
-  DEFAULT_TEST_SCENARIO_NAMES, 
-  CONSOLE_MESSAGES, 
-  FILE_PATHS 
-} from './utils/constants.js';
+import {
+  establishValidatedDatabaseConnection,
+  createDatabaseConnectionConfig
+} from '../core/db.js';
+import { introspectSchema } from '../core/introspect.js';
+import type { PolicyConfig, TableTestConfiguration } from '../shared/types.js';
+import {
+  DEFAULT_TEST_CONFIGURATION,
+  DEFAULT_TEST_SCENARIO_NAMES,
+  CONSOLE_MESSAGES,
+  FILE_PATHS
+} from '../shared/constants.js';
+import {
+  createLogger,
+  formatDiscoveredTables,
+  Logger,
+} from '../shared/logger.js';
 
 export const initCommand = new Command('init')
   .description('Introspect database schema and scaffold policy.yaml')
   .option('-u, --url <url>', 'Database connection URL')
   .option('--role-validation', 'Enable database role validation (default: disabled)')
+  .option('--verbose', 'Enable verbose logging')
   .action(async (options) => {
+    const logger = createLogger(options.verbose);
     const dbUrl = options.url || process.env.DATABASE_URL;
-    
+
     if (!dbUrl) {
-      console.error('❌ Error: Database URL is required. Use --url or set DATABASE_URL env var.');
+      logger.error('Database URL is required. Use --url or set DATABASE_URL env var.');
       process.exit(1);
     }
 
     try {
-      console.log(CONSOLE_MESSAGES.CONNECTING);
+      logger.start(CONSOLE_MESSAGES.CONNECTING);
       const connectionConfig = createDatabaseConnectionConfig(dbUrl, {
         role_validation_enabled: options.roleValidation || false,
       });
       const pool = await establishValidatedDatabaseConnection(connectionConfig);
-      
-      console.log(CONSOLE_MESSAGES.INTROSPECTING);
+      logger.succeed('Connected to database.');
+
+      logger.start(CONSOLE_MESSAGES.INTROSPECTING);
       const discoveredTables = await introspectSchema(pool);
       await pool.end();
+      logger.succeed('Schema introspection complete.');
 
       if (discoveredTables.length === 0) {
-        console.log('⚠️  No tables with RLS enabled found.');
+        logger.warn('No tables with RLS enabled found.');
         return;
       }
 
@@ -46,10 +55,13 @@ export const initCommand = new Command('init')
       const policyConfig = generatePolicyConfigurationFromDiscoveredTables(discoveredTables);
       await writePolicyConfigurationToFile(policyConfig);
 
-      displaySuccessfulInitializationSummary(discoveredTables);
-      
+      logger.succeed(`Generated ${FILE_PATHS.POLICY_CONFIG_FILE} with ${discoveredTables.length} tables`);
+      logger.info('Edit the file to customize test scenarios and expected permissions');
+
+      logger.raw(formatDiscoveredTables(discoveredTables));
+
     } catch (error) {
-      console.error('❌ Error:', error instanceof Error ? error.message : error);
+      logger.error('An unexpected error occurred during initialization.', error);
       process.exit(1);
     }
   });
@@ -118,13 +130,9 @@ async function writePolicyConfigurationToFile(config: PolicyConfig): Promise<voi
 /**
  * Displays a summary of successful initialization with discovered tables.
  */
-function displaySuccessfulInitializationSummary(discoveredTables: any[]): void {
-  console.log(`✅ Generated ${FILE_PATHS.POLICY_CONFIG_FILE} with ${discoveredTables.length} tables`);
-  console.log('📝 Edit the file to customize test scenarios and expected permissions');
-  
-  console.log('\n📋 Found tables:');
-  discoveredTables.forEach(table => {
-    const tableKey = createTableKeyFromSchemaAndName(table.schema, table.name);
-    console.log(`  • ${tableKey} (${table.policies.length} policies)`);
-  });
+function displaySuccessfulInitializationSummary(logger: Logger, discoveredTables: any[]): void {
+  logger.succeed(`Generated ${FILE_PATHS.POLICY_CONFIG_FILE} with ${discoveredTables.length} tables`);
+  logger.info('Edit the file to customize test scenarios and expected permissions');
+
+  logger.raw(formatDiscoveredTables(discoveredTables));
 } 
