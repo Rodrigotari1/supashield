@@ -1,45 +1,93 @@
 import type { Pool, PoolClient } from 'pg';
 import type { TableMeta, PolicyInfo } from './types.js';
+import { EXCLUDED_SCHEMAS_FROM_INTROSPECTION } from './constants.js';
 
+/**
+ * Introspects the database schema to discover all tables with RLS enabled and their policies.
+ */
 export async function introspectSchema(pool: Pool): Promise<TableMeta[]> {
   const client = await pool.connect();
   try {
-    // Get all tables with RLS enabled
-    const tablesQuery = `
-      SELECT 
-        schemaname as schema,
-        tablename as name
-      FROM pg_tables 
-      WHERE schemaname NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
-        AND rowsecurity = true
-      ORDER BY schemaname, tablename;
-    `;
-
-    const { rows: tables } = await client.query(tablesQuery);
+    const tablesWithRlsEnabled = await discoverTablesWithRowLevelSecurityEnabled(client);
+    const tablesWithPolicyDetails = await enrichTablesWithPolicyInformation(client, tablesWithRlsEnabled);
     
-    const tableMetas: TableMeta[] = [];
-    
-    for (const table of tables) {
-      const policies = await getPoliciesForTable(client, table.schema, table.name);
-      tableMetas.push({
-        schema: table.schema,
-        name: table.name,
-        policies,
-      });
-    }
-
-    return tableMetas;
+    return tablesWithPolicyDetails;
   } finally {
     client.release();
   }
 }
 
-async function getPoliciesForTable(
+/**
+ * Discovers all tables in the database that have Row Level Security enabled.
+ */
+async function discoverTablesWithRowLevelSecurityEnabled(client: PoolClient): Promise<Array<{schema: string, name: string}>> {
+  const excludedSchemasCondition = createExcludedSchemasCondition();
+  
+  const tablesQuery = `
+    SELECT 
+      schemaname as schema,
+      tablename as name
+    FROM pg_tables 
+    WHERE ${excludedSchemasCondition}
+      AND rowsecurity = true
+    ORDER BY schemaname, tablename;
+  `;
+
+  const { rows: tables } = await client.query(tablesQuery);
+  return tables;
+}
+
+/**
+ * Creates a SQL condition to exclude system schemas from introspection.
+ */
+function createExcludedSchemasCondition(): string {
+  const schemaList = EXCLUDED_SCHEMAS_FROM_INTROSPECTION
+    .map(schema => `'${schema}'`)
+    .join(', ');
+  
+  return `schemaname NOT IN (${schemaList})`;
+}
+
+/**
+ * Enriches discovered tables with detailed policy information.
+ */
+async function enrichTablesWithPolicyInformation(
+  client: PoolClient, 
+  tables: Array<{schema: string, name: string}>
+): Promise<TableMeta[]> {
+  const enrichedTables: TableMeta[] = [];
+  
+  for (const table of tables) {
+    const policies = await introspectPoliciesForSpecificTable(client, table.schema, table.name);
+    enrichedTables.push({
+      schema: table.schema,
+      name: table.name,
+      policies,
+    });
+  }
+
+  return enrichedTables;
+}
+
+/**
+ * Introspects all RLS policies for a specific table.
+ */
+async function introspectPoliciesForSpecificTable(
   client: PoolClient,
   schema: string,
   table: string,
 ): Promise<PolicyInfo[]> {
-  const policiesQuery = `
+  const policiesQuery = createPolicyIntrospectionQuery();
+  const { rows: policies } = await client.query(policiesQuery, [schema, table]);
+  
+  return policies.map(transformRawPolicyDataToStructured);
+}
+
+/**
+ * Creates the SQL query for introspecting table policies.
+ */
+function createPolicyIntrospectionQuery(): string {
+  return `
     SELECT 
       pol.polname as name,
       pol.polcmd as command,
@@ -52,14 +100,17 @@ async function getPoliciesForTable(
     WHERE nsp.nspname = $1 AND cls.relname = $2
     ORDER BY pol.polname;
   `;
+}
 
-  const { rows: policies } = await client.query(policiesQuery, [schema, table]);
-  
-  return policies.map((policy: any): PolicyInfo => ({
-    name: policy.name,
-    command: policy.command as 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE',
-    roles: policy.role_oids || [],
-    using_expression: policy.using_expression || undefined,
-    with_check_expression: policy.with_check_expression || undefined,
-  }));
+/**
+ * Transforms raw policy data from PostgreSQL into structured PolicyInfo objects.
+ */
+function transformRawPolicyDataToStructured(rawPolicy: any): PolicyInfo {
+  return {
+    name: rawPolicy.name,
+    command: rawPolicy.command as 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE',
+    roles: rawPolicy.role_oids || [],
+    using_expression: rawPolicy.using_expression || undefined,
+    with_check_expression: rawPolicy.with_check_expression || undefined,
+  };
 } 
