@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "chalk": "^5.4.1",
+    "chokidar": "^4.0.3",
     "commander": "^11.1.0",
     "dotenv": "^17.2.0",
     "ora": "^8.2.0",

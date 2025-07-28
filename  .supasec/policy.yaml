@@ -1,0 +1,10 @@
+tables:
+  public.users:
+    test_scenarios:
+      - name: anonymous_user
+        jwt_claims: {}
+        expected:
+          SELECT: ALLOW
+          INSERT: DENY
+          UPDATE: DENY
+          DELETE: DENY 
