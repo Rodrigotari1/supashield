@@ -13,10 +13,17 @@ import {
 import { createLogger, Logger } from '../shared/logger.js';
 import type { PolicyConfig, PolicySnapshot } from '../shared/types.js';
 import { loadPolicyConfigurationFromFile } from '../shared/config.js';
+import { executePromisesInParallel } from '../shared/parallel.js';
 
 export const snapshotCommand = new Command('snapshot')
   .description('Take a snapshot of the current policy behavior')
   .option('-u, --url <url>', 'Database connection URL')
+  .option(
+    '--parallel <count>',
+    'Number of parallel snapshots to run',
+    (value) => parseInt(value, 10),
+    1
+  )
   .option('--verbose', 'Enable verbose logging')
   .action(async (options) => {
     const logger = createLogger(options.verbose);
@@ -38,7 +45,12 @@ export const snapshotCommand = new Command('snapshot')
       logger.succeed('Connected to database.');
 
       logger.start('📸 Creating policy snapshot...');
-      const snapshot = await createPolicySnapshot(pool, config, logger);
+      const snapshot = await createPolicySnapshot(
+        pool,
+        config,
+        options.parallel,
+        logger
+      );
       await writePolicySnapshotToFile(snapshot);
       logger.succeed(`Snapshot saved to ${FILE_PATHS.SNAPSHOT_FILE}`);
 
@@ -52,9 +64,11 @@ export const snapshotCommand = new Command('snapshot')
 async function createPolicySnapshot(
   pool: any,
   config: PolicyConfig,
+  parallelism: number,
   logger: Logger
 ): Promise<PolicySnapshot> {
   const snapshot: PolicySnapshot = {};
+  const snapshotTasks: Array<() => Promise<void>> = [];
 
   for (const [tableKey, tableConfig] of Object.entries(config.tables)) {
     snapshot[tableKey] = {};
@@ -64,17 +78,23 @@ async function createPolicySnapshot(
       snapshot[tableKey][scenario.name] = {};
       logger.raw(`    - ${scenario.name}`);
 
-      for (const operation of SUPPORTED_DATABASE_OPERATIONS) {
-        const result = await executeRlsPolicyProbeForOperation(
-          pool,
-          ...tableKey.split('.'),
-          operation,
-          scenario.jwt_claims
-        );
-        snapshot[tableKey][scenario.name][operation] = result;
-      }
+      snapshotTasks.push(async () => {
+        for (const operation of SUPPORTED_DATABASE_OPERATIONS) {
+          const [schema, table] = tableKey.split('.');
+          const result = await executeRlsPolicyProbeForOperation(
+            pool,
+            schema,
+            table,
+            operation,
+            scenario.jwt_claims
+          );
+          snapshot[tableKey][scenario.name][operation] = result;
+        }
+      });
     }
   }
+
+  await executePromisesInParallel(snapshotTasks, parallelism);
 
   return snapshot;
 }

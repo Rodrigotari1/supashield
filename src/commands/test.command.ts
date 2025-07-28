@@ -27,6 +27,7 @@ import {
   compareSnapshots,
   loadPolicySnapshotFromFile,
 } from '../shared/diff.js';
+import { executePromisesInParallel } from '../shared/parallel.js';
 import chokidar from 'chokidar';
 
 export const testCommand = new Command('test')
@@ -35,6 +36,12 @@ export const testCommand = new Command('test')
   .option('--table <table>', 'Test only specific table (e.g. public.todos)')
   .option('--json', 'Output results in JSON format')
   .option('--watch', 'Watch for changes and re-run tests')
+  .option(
+    '--parallel <count>',
+    'Number of parallel tests to run',
+    (value) => parseInt(value, 10),
+    1
+  )
   .option('--verbose', 'Enable verbose logging')
   .action(async (options) => {
     const logger = createLogger(options.verbose);
@@ -68,7 +75,7 @@ export const testCommand = new Command('test')
           {
             target_table: options.table,
             operations_to_test: SUPPORTED_DATABASE_OPERATIONS,
-            parallel_execution: false,
+            parallel_concurrency: options.parallel,
             verbose_logging: options.verbose,
           },
           logger
@@ -116,49 +123,57 @@ async function executeAllPolicyTestsForConfiguration(
   executionConfig: any,
   logger: Logger
 ): Promise<TestResults> {
+  const allTableKeys = Object.keys(config.tables).filter(
+    (tableKey) =>
+      !executionConfig.target_table ||
+      tableKey === executionConfig.target_table
+  );
+
+  const testRuns: Array<() => Promise<TestResultDetail[]>> = [];
+
+  for (const tableKey of allTableKeys) {
+    const tableConfig = config.tables[tableKey];
+    logger.raw(`\n🔍 Testing ${tableKey}:`);
+    const [schema, table] = tableKey.split('.');
+
+    for (const scenario of tableConfig.test_scenarios) {
+      logger.raw(`  👤 ${scenario.name}:`);
+      testRuns.push(() =>
+        executeTestScenarioForAllOperations(
+          pool,
+          schema,
+          table,
+          scenario,
+          executionConfig.operations_to_test,
+          logger
+        )
+      );
+    }
+  }
+
+  const detailed_results = await executePromisesInParallel(
+    testRuns,
+    executionConfig.parallel_concurrency
+  );
+
   const results: TestResults = {
     total_tests: 0,
     passed_tests: 0,
     failed_tests: 0,
     error_tests: 0,
     execution_time_ms: 0,
-    detailed_results: [],
+    detailed_results: detailed_results.flat(),
   };
 
-  for (const [tableKey, tableConfig] of Object.entries(config.tables)) {
-    if (executionConfig.target_table && tableKey !== executionConfig.target_table) {
-      continue;
-    }
-
-    logger.raw(`\n🔍 Testing ${tableKey}:`);
-
-    const [schema, table] = tableKey.split('.');
-
-    for (const scenario of tableConfig.test_scenarios) {
-      logger.raw(`  👤 ${scenario.name}:`);
-
-      const scenarioResults = await executeTestScenarioForAllOperations(
-        pool,
-        schema,
-        table,
-        scenario,
-        executionConfig.operations_to_test,
-        logger
-      );
-
-      results.detailed_results.push(...scenarioResults);
-
-      // Update counters
-      for (const result of scenarioResults) {
-        results.total_tests++;
-        if (result.passed) {
-          results.passed_tests++;
-        } else if (result.actual === 'ERROR') {
-          results.error_tests++;
-        } else {
-          results.failed_tests++;
-        }
-      }
+  // Update counters
+  for (const result of results.detailed_results) {
+    results.total_tests++;
+    if (result.passed) {
+      results.passed_tests++;
+    } else if (result.actual === 'ERROR') {
+      results.error_tests++;
+    } else {
+      results.failed_tests++;
     }
   }
 

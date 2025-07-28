@@ -147,10 +147,10 @@ async function attemptDatabaseOperationWithRlsEvaluation(
         return await executeInsertOperationAndEvaluateResult(client, schema, table, fullyQualifiedTableName);
       
       case 'UPDATE':
-        return await executeUpdateOperationAndEvaluateResult(client, fullyQualifiedTableName);
+        return await executeUpdateOperationAndEvaluateResult(client, schema, table, fullyQualifiedTableName);
       
       case 'DELETE':
-        return await executeDeleteOperationAndEvaluateResult(client, fullyQualifiedTableName);
+        return await executeDeleteOperationAndEvaluateResult(client, schema, table, fullyQualifiedTableName);
       
       default:
         return 'ERROR';
@@ -174,8 +174,67 @@ async function executeSelectOperationAndEvaluateResult(
   client: PoolClient, 
   fullyQualifiedTableName: string
 ): Promise<ProbeResult> {
-  const result = await client.query(`SELECT * FROM ${fullyQualifiedTableName} LIMIT 1`);
+  const result = await client.query(
+    `SELECT * FROM ${fullyQualifiedTableName} LIMIT 1`
+  );
   return result.rows.length > 0 ? 'ALLOW' : 'DENY';
+}
+
+/**
+ * Introspects the primary key column(s) for a given table.
+ */
+async function introspectPrimaryKeyColumns(
+  client: PoolClient,
+  schema: string,
+  table: string
+): Promise<string[]> {
+  const { rows } = await client.query(
+    `
+    SELECT kcu.column_name
+    FROM information_schema.table_constraints AS tc
+    JOIN information_schema.key_column_usage AS kcu
+      ON tc.constraint_name = kcu.constraint_name
+      AND tc.table_schema = kcu.table_schema
+    WHERE tc.constraint_type = 'PRIMARY KEY'
+      AND tc.table_schema = $1
+      AND tc.table_name = $2;
+  `,
+    [schema, table]
+  );
+  return rows.map((row: any) => row.column_name);
+}
+
+/**
+ * Finds the primary key of the first row visible to the current user context.
+ * This is used to create a safe, targeted UPDATE or DELETE operation.
+ */
+async function findTargetRowForMutation(
+  client: PoolClient,
+  schema: string,
+  table: string,
+  fullyQualifiedTableName: string
+): Promise<{ pkColumns: string[]; pkValues: any[] } | null> {
+  const pkColumns = await introspectPrimaryKeyColumns(client, schema, table);
+  if (pkColumns.length === 0) {
+    // We cannot safely test UPDATE/DELETE on a table without a primary key.
+    // The operation would be ambiguous and could affect multiple rows.
+    // This is a safeguard to prevent unintended side effects.
+    throw new Error(
+      `Cannot test UPDATE/DELETE on table ${fullyQualifiedTableName} because it has no primary key.`
+    );
+  }
+
+  const pkSelect = pkColumns.map((col) => `"${col}"`).join(', ');
+  const { rows } = await client.query(
+    `SELECT ${pkSelect} FROM ${fullyQualifiedTableName} LIMIT 1`
+  );
+
+  if (rows.length === 0) {
+    return null; // No rows are visible to this user, so we can't update/delete anything.
+  }
+
+  const pkValues = pkColumns.map((col) => rows[0][col]);
+  return { pkColumns, pkValues };
 }
 
 /**
@@ -205,26 +264,76 @@ async function executeInsertOperationAndEvaluateResult(
 
 /**
  * Executes an UPDATE operation and evaluates the result.
+ * It targets a single, visible row to avoid table scans and improve performance.
  */
 async function executeUpdateOperationAndEvaluateResult(
-  client: PoolClient, 
+  client: PoolClient,
+  schema: string,
+  table: string,
   fullyQualifiedTableName: string
 ): Promise<ProbeResult> {
-  const result = await client.query(`UPDATE ${fullyQualifiedTableName} SET id = id WHERE true`);
-  const affectedRows = result.rowCount ?? 0;
-  return affectedRows > 0 ? 'ALLOW' : 'DENY';
+  const targetRow = await findTargetRowForMutation(
+    client,
+    schema,
+    table,
+    fullyQualifiedTableName
+  );
+  if (!targetRow) {
+    return 'DENY'; // No rows visible, so nothing can be updated.
+  }
+
+  const { pkColumns, pkValues } = targetRow;
+
+  // Build a parameterized WHERE clause to safely target the specific row.
+  const whereClause = pkColumns
+    .map((col, i) => `"${col}" = $${i + 1}`)
+    .join(' AND ');
+
+  // We only need to check if the policy allows the update, so we perform
+  // a no-op update on the primary key itself.
+  const setClause = `"${pkColumns[0]}" = "${pkColumns[0]}"`;
+
+  const result = await client.query(
+    `UPDATE ${fullyQualifiedTableName} SET ${setClause} WHERE ${whereClause}`,
+    pkValues
+  );
+
+  return (result.rowCount ?? 0) > 0 ? 'ALLOW' : 'DENY';
 }
 
 /**
  * Executes a DELETE operation and evaluates the result.
+ * It targets a single, visible row to avoid table scans and improve performance.
  */
 async function executeDeleteOperationAndEvaluateResult(
-  client: PoolClient, 
+  client: PoolClient,
+  schema: string,
+  table: string,
   fullyQualifiedTableName: string
 ): Promise<ProbeResult> {
-  const result = await client.query(`DELETE FROM ${fullyQualifiedTableName} WHERE 1=1`);
-  const affectedRows = result.rowCount ?? 0;
-  return affectedRows > 0 ? 'ALLOW' : 'DENY';
+  const targetRow = await findTargetRowForMutation(
+    client,
+    schema,
+    table,
+    fullyQualifiedTableName
+  );
+  if (!targetRow) {
+    return 'DENY'; // No rows visible, so nothing can be deleted.
+  }
+
+  const { pkColumns, pkValues } = targetRow;
+
+  // Build a parameterized WHERE clause to safely target the specific row.
+  const whereClause = pkColumns
+    .map((col, i) => `"${col}" = $${i + 1}`)
+    .join(' AND ');
+
+  const result = await client.query(
+    `DELETE FROM ${fullyQualifiedTableName} WHERE ${whereClause}`,
+    pkValues
+  );
+
+  return (result.rowCount ?? 0) > 0 ? 'ALLOW' : 'DENY';
 }
 
 /**
