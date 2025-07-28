@@ -1,91 +1,111 @@
 import { Command } from 'commander';
-import { readFile } from 'fs/promises';
-import { parse } from 'yaml';
 import {
+  createDatabaseConnectionConfig,
   establishValidatedDatabaseConnection,
-  createDatabaseConnectionConfig
 } from '../core/db.js';
 import { executeRlsPolicyProbeForOperation } from '../core/simulate.js';
+import { loadPolicyConfigurationFromFile } from '../shared/config.js';
 import type {
+  DatabaseOperation,
   PolicyConfig,
-  PolicyMatrix,
-  TestResults,
+  PolicySnapshot,
   TestResultDetail,
-  DatabaseOperation
+  TestResults,
 } from '../shared/types.js';
 import {
-  SUPPORTED_DATABASE_OPERATIONS,
   CONSOLE_MESSAGES,
   FILE_PATHS,
+  SUPPORTED_DATABASE_OPERATIONS,
 } from '../shared/constants.js';
 import {
   createLogger,
-  formatTestResult,
   formatSummary,
+  formatTestResult,
   Logger,
 } from '../shared/logger.js';
+import {
+  compareSnapshots,
+  loadPolicySnapshotFromFile,
+} from '../shared/diff.js';
+import chokidar from 'chokidar';
 
 export const testCommand = new Command('test')
   .description('Run policy tests against database')
   .option('-u, --url <url>', 'Database connection URL')
   .option('--table <table>', 'Test only specific table (e.g. public.todos)')
+  .option('--json', 'Output results in JSON format')
+  .option('--watch', 'Watch for changes and re-run tests')
   .option('--verbose', 'Enable verbose logging')
   .action(async (options) => {
     const logger = createLogger(options.verbose);
-    const dbUrl = options.url || process.env.DATABASE_URL;
 
-    if (!dbUrl) {
-      logger.error('Database URL is required. Use --url or set DATABASE_URL env var.');
-      process.exit(1);
-    }
+    const run = async () => {
+      const dbUrl = options.url || process.env.DATABASE_URL;
 
-    try {
-      const startTime = performance.now();
+      if (!dbUrl) {
+        logger.error(
+          'Database URL is required. Use --url or set DATABASE_URL env var.'
+        );
+        process.exit(1);
+      }
 
-      logger.start(CONSOLE_MESSAGES.LOADING_CONFIG);
-      const config = await loadPolicyConfigurationFromFile();
-      logger.succeed('Policy configuration loaded.');
+      try {
+        const startTime = performance.now();
 
-      logger.start(CONSOLE_MESSAGES.CONNECTING);
-      const connectionConfig = createDatabaseConnectionConfig(dbUrl);
-      const pool = await establishValidatedDatabaseConnection(connectionConfig);
-      logger.succeed('Connected to database.');
+        logger.start(CONSOLE_MESSAGES.LOADING_CONFIG);
+        const config = await loadPolicyConfigurationFromFile();
+        logger.succeed('Policy configuration loaded.');
 
-      logger.start(CONSOLE_MESSAGES.RUNNING_TESTS);
-      const testResults = await executeAllPolicyTestsForConfiguration(
-        pool,
-        config,
-        {
-          target_table: options.table,
-          operations_to_test: SUPPORTED_DATABASE_OPERATIONS,
-          parallel_execution: false,
-          verbose_logging: options.verbose,
-        },
-        logger
-      );
-      logger.succeed('All tests complete.');
+        logger.start(CONSOLE_MESSAGES.CONNECTING);
+        const connectionConfig = createDatabaseConnectionConfig(dbUrl);
+        const pool = await establishValidatedDatabaseConnection(connectionConfig);
+        logger.succeed('Connected to database.');
 
-      await pool.end();
+        logger.start(CONSOLE_MESSAGES.RUNNING_TESTS);
+        const testResults = await executeAllPolicyTestsForConfiguration(
+          pool,
+          config,
+          {
+            target_table: options.table,
+            operations_to_test: SUPPORTED_DATABASE_OPERATIONS,
+            parallel_execution: false,
+            verbose_logging: options.verbose,
+          },
+          logger
+        );
+        logger.succeed('All tests complete.');
 
-      const endTime = performance.now();
-      testResults.execution_time_ms = endTime - startTime;
+        await pool.end();
 
-      displayTestResultsSummary(testResults, logger);
-      determineProcessExitCode(testResults, logger);
+        const endTime = performance.now();
+        testResults.execution_time_ms = endTime - startTime;
 
-    } catch (error) {
-      logger.error('An unexpected error occurred during testing.', error);
-      process.exit(1);
+        if (options.json) {
+          console.log(JSON.stringify(testResults, null, 2));
+        } else {
+          displayTestResultsSummary(testResults, logger);
+          await checkAgainstSnapshot(testResults, logger);
+        }
+
+        determineProcessExitCode(testResults, logger);
+      } catch (error) {
+        logger.error('An unexpected error occurred during testing.', error);
+        process.exit(1);
+      }
+    };
+
+    await run();
+
+    if (options.watch) {
+      logger.info('👀 Watching for changes...');
+      chokidar
+        .watch([FILE_PATHS.POLICY_CONFIG_FILE, '**/*.sql'])
+        .on('change', () => {
+          logger.info('Changes detected, re-running tests...');
+          run();
+        });
     }
   });
-
-/**
- * Loads policy configuration from the standard policy file location.
- */
-async function loadPolicyConfigurationFromFile(): Promise<PolicyConfig> {
-  const yamlContent = await readFile(FILE_PATHS.POLICY_CONFIG_FILE, 'utf-8');
-  return parse(yamlContent);
-}
 
 /**
  * Executes all policy tests defined in the configuration.
@@ -210,6 +230,54 @@ async function executeTestScenarioForAllOperations(
   }
 
   return results;
+}
+
+async function checkAgainstSnapshot(
+  results: TestResults,
+  logger: Logger
+): Promise<void> {
+  const previousSnapshot = await loadPolicySnapshotFromFile();
+  if (!previousSnapshot) {
+    return; // No snapshot, nothing to compare against
+  }
+
+  // Re-format test results into a snapshot structure
+  const currentSnapshot: PolicySnapshot = {};
+  for (const result of results.detailed_results) {
+    if (!currentSnapshot[result.table_key]) {
+      currentSnapshot[result.table_key] = {};
+    }
+    if (!currentSnapshot[result.table_key][result.scenario_name]) {
+      currentSnapshot[result.table_key][result.scenario_name] = {};
+    }
+    currentSnapshot[result.table_key][result.scenario_name][
+      result.operation
+    ] = result.actual;
+  }
+
+  const comparison = compareSnapshots(previousSnapshot, currentSnapshot);
+  if (comparison.isIdentical) {
+    return;
+  }
+
+  logger.warn('\n🚦 Snapshot comparison:');
+
+  if (comparison.leaks.length > 0) {
+    logger.error('🚨 Potential security leaks found since last snapshot:');
+    logger.raw(comparison.leaks.join('\n'));
+    // This is a critical failure, so we'll mark it for process exit
+    results.failed_tests += comparison.leaks.length;
+  }
+
+  if (comparison.regressions.length > 0) {
+    logger.warn('\n🔍 Regressions found since last snapshot:');
+    logger.raw(comparison.regressions.join('\n'));
+  }
+
+  if (comparison.newlyIntroduced.length > 0) {
+    logger.info('\n✨ Newly introduced permissions since last snapshot:');
+    logger.raw(comparison.newlyIntroduced.join('\n'));
+  }
 }
 
 /**
