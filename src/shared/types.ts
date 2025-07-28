@@ -12,16 +12,12 @@ export interface PolicyInfo {
   with_check_expression?: string;
 }
 
-export interface PolicyMatrix {
+export interface PolicySnapshot {
   [tableKey: string]: {
-    [operation: string]: ProbeResult;
+    [scenarioName: string]: {
+      [operation in DatabaseOperation]?: ProbeResult;
+    };
   };
-}
-
-export interface CacheFile {
-  db_hash: string;
-  matrix: PolicyMatrix;
-  timestamp: string;
 }
 
 export interface PolicyConfig {
@@ -111,4 +107,4 @@ export interface DatabaseRolePrivileges {
   has_create_privilege: boolean;
   table_specific_privileges: string[];
   is_superuser: boolean;
-} 
+}

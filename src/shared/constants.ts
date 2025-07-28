@@ -73,7 +73,7 @@ export const CONSOLE_MESSAGES = {
 export const FILE_PATHS = {
   SUPASEC_DIRECTORY: '.supasec',
   POLICY_CONFIG_FILE: '.supasec/policy.yaml',
-  CACHE_FILE: '.supasec/cache.json',
+  SNAPSHOT_FILE: '.supasec/snapshot.json',
 } as const;
 
 // Column type mappings for test data generation
