@@ -137,7 +137,6 @@ async function executeAllPolicyTestsForConfiguration(
     const [schema, table] = tableKey.split('.');
 
     for (const scenario of tableConfig.test_scenarios) {
-      logger.raw(`  👤 ${scenario.name}:`);
       testRuns.push(() =>
         executeTestScenarioForAllOperations(
           pool,
@@ -192,6 +191,8 @@ async function executeTestScenarioForAllOperations(
   logger: Logger
 ): Promise<TestResultDetail[]> {
   const results: TestResultDetail[] = [];
+
+  logger.raw(`  👤 ${scenario.name}:`);
 
   for (const operation of operations) {
     const expected = scenario.expected[operation];
