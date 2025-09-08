@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import type { 
   DatabaseOperation, 
   DefaultTestConfiguration, 
@@ -60,13 +61,13 @@ export const SQL_ERROR_CODES = {
 
 // Console output messages
 export const CONSOLE_MESSAGES = {
-  CONNECTING: '🔍 Connecting to database...',
-  INTROSPECTING: '📊 Introspecting schema...',
-  LOADING_CONFIG: '📋 Loading policy configuration...',
-  RUNNING_TESTS: '🧪 Running policy tests...',
-  SUCCESS_ALL_PASSED: '🎉 All policy tests passed!',
-  ERROR_MISMATCHES_DETECTED: (count: number) => `⚠️  ${count} policy mismatches detected!`,
-  REVIEW_POLICIES: '💡 Review your RLS policies or update expected results in policy.yaml',
+  CONNECTING: 'Connecting to database...',
+  INTROSPECTING: 'Introspecting schema...',
+  LOADING_CONFIG: 'Loading policy configuration...',
+  RUNNING_TESTS: 'Running policy tests...',
+  SUCCESS_ALL_PASSED: 'All policy tests passed!',
+  ERROR_MISMATCHES_DETECTED: (count: number) => `${count} policy mismatches detected!`,
+  REVIEW_POLICIES: 'Review your RLS policies or update expected results in policy.yaml',
 } as const;
 
 // File system paths
@@ -74,12 +75,13 @@ export const FILE_PATHS = {
   SUPASEC_DIRECTORY: '.supasec',
   POLICY_CONFIG_FILE: '.supasec/policy.yaml',
   SNAPSHOT_FILE: '.supasec/snapshot.json',
+  CACHE_FILE: '.supasec/cache.json',
 } as const;
 
 // Column type mappings for test data generation
 export const COLUMN_TYPE_TEST_VALUES = {
   UUID: () => 'auth.uid()',
-  UUID_RANDOM: () => `'${crypto.randomUUID()}'`,
+  UUID_RANDOM: () => `'${randomUUID()}'`,
   TEXT: "'test'",
   VARCHAR: "'test'",
   INTEGER: '1',

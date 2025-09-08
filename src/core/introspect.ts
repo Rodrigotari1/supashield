@@ -3,12 +3,12 @@ import type { TableMeta, PolicyInfo } from '../shared/types.js';
 import { EXCLUDED_SCHEMAS_FROM_INTROSPECTION } from '../shared/constants.js';
 
 /**
- * Introspects the database schema to discover all tables with RLS enabled and their policies.
+ * Introspects the database schema to discover tables with RLS enabled and their policies.
  */
-export async function introspectSchema(pool: Pool): Promise<TableMeta[]> {
+export async function introspectSchema(pool: Pool, options: { includeSystemSchemas?: boolean } = {}): Promise<TableMeta[]> {
   const client = await pool.connect();
   try {
-    const tablesWithRlsEnabled = await discoverTablesWithRowLevelSecurityEnabled(client);
+    const tablesWithRlsEnabled = await discoverTablesWithRowLevelSecurityEnabled(client, options.includeSystemSchemas);
     const tablesWithPolicyDetails = await enrichTablesWithPolicyInformation(client, tablesWithRlsEnabled);
     
     return tablesWithPolicyDetails;
@@ -20,16 +20,17 @@ export async function introspectSchema(pool: Pool): Promise<TableMeta[]> {
 /**
  * Discovers all tables in the database that have Row Level Security enabled.
  */
-async function discoverTablesWithRowLevelSecurityEnabled(client: PoolClient): Promise<Array<{schema: string, name: string}>> {
-  const excludedSchemasCondition = createExcludedSchemasCondition();
+async function discoverTablesWithRowLevelSecurityEnabled(client: PoolClient, includeSystemSchemas = false): Promise<Array<{schema: string, name: string}>> {
+  const schemaCondition = includeSystemSchemas 
+    ? createExcludedSchemasCondition() 
+    : "schemaname = 'public'";
   
   const tablesQuery = `
     SELECT 
       schemaname as schema,
       tablename as name
     FROM pg_tables 
-    WHERE ${excludedSchemasCondition}
-      AND rowsecurity = true
+    WHERE ${schemaCondition}
     ORDER BY schemaname, tablename;
   `;
 

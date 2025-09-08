@@ -58,13 +58,14 @@ export function createLogger(verbose = false): Logger {
  * @returns A formatted string.
  */
 export function formatTestResult(result: any): string {
-  const icon = result.passed ? chalk.green('✅') : chalk.red('❌');
+  const status = result.passed ? 'PASS' : 'FAIL';
+  const statusColor = result.passed ? chalk.green(status) : chalk.red(status);
   const operation = result.operation.padEnd(6, ' ');
-  const status = result.passed
+  const details = result.passed
     ? chalk.green(`${result.actual} (expected ${result.expected})`)
     : chalk.red(`${result.actual} (expected ${result.expected}) - MISMATCH!`);
 
-  return `    ${icon} ${operation}: ${status}`;
+  return `    ${statusColor} ${operation}: ${details}`;
 }
 
 /**
@@ -74,14 +75,14 @@ export function formatTestResult(result: any): string {
  */
 export function formatSummary(results: any): string {
   const summary = [
-    chalk.bold('\n📊 Test Results:'),
+    chalk.bold('\nTest Results:'),
     `  Total tests: ${results.total_tests}`,
-    chalk.green(`  Passed: ${results.passed_tests} ✅`),
-    chalk.red(`  Failed: ${results.failed_tests} ❌`),
+    chalk.green(`  Passed: ${results.passed_tests}`),
+    chalk.red(`  Failed: ${results.failed_tests}`),
   ];
 
   if (results.error_tests > 0) {
-    summary.push(chalk.red.bold(`  Errors: ${results.error_tests} 🔥`));
+    summary.push(chalk.red.bold(`  Errors: ${results.error_tests}`));
   }
 
   summary.push(`  Execution time: ${Math.round(results.execution_time_ms)}ms`);
@@ -98,8 +99,8 @@ export function formatSummary(results: any): string {
 export function formatDiscoveredTables(tables: any[]): string {
   const formattedTables = tables.map(table => {
     const tableKey = `${table.schema}.${table.name}`;
-    return `  • ${tableKey} (${table.policies.length} policies)`;
+    return `  - ${tableKey} (${table.policies.length} policies)`;
   });
 
-  return `\n📋 Found tables:\n${formattedTables.join('\n')}`;
+  return `\nFound tables:\n${formattedTables.join('\n')}`;
 } 
