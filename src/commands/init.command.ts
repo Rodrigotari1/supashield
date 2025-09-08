@@ -20,8 +20,9 @@ import {
 } from '../shared/logger.js';
 
 export const initCommand = new Command('init')
-  .description('Introspect database schema and scaffold policy.yaml')
+  .description('Discover your public tables and generate RLS tests')
   .option('-u, --url <url>', 'Database connection URL')
+  .option('--all-schemas', 'Include system tables (auth, storage, etc.)')
   .option('--verbose', 'Enable verbose logging')
   .action(async (options) => {
     const logger = createLogger(options.verbose);
@@ -39,7 +40,9 @@ export const initCommand = new Command('init')
       logger.succeed('Connected to database.');
 
       logger.start(CONSOLE_MESSAGES.INTROSPECTING);
-      const discoveredTables = await introspectSchema(pool);
+      const discoveredTables = await introspectSchema(pool, {
+        includeSystemSchemas: options.allSchemas
+      });
       await pool.end();
       logger.succeed('Schema introspection complete.');
 

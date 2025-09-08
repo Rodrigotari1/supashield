@@ -5,7 +5,11 @@ import {
   establishValidatedDatabaseConnection,
   createDatabaseConnectionConfig
 } from '../core/db.js';
-import { executeRlsPolicyProbeForOperation } from '../core/simulate.js';
+import { 
+  executeRlsPolicyProbeForOperation,
+  fetchRealUserContext,
+  createJwtClaimsFromUser 
+} from '../core/simulate.js';
 import type {
   PolicyConfig,
   PolicyMatrix,
@@ -45,13 +49,29 @@ export const testCommand = new Command('test')
       const startTime = performance.now();
 
       logger.start(CONSOLE_MESSAGES.LOADING_CONFIG);
-      const config = await loadPolicyConfigurationFromFile();
+      let config = await loadPolicyConfigurationFromFile();
       logger.succeed('Policy configuration loaded.');
 
       logger.start(CONSOLE_MESSAGES.CONNECTING);
       const connectionConfig = createDatabaseConnectionConfig(dbUrl);
       const pool = await establishValidatedDatabaseConnection(connectionConfig);
       logger.succeed('Connected to database.');
+
+      // Handle real user testing
+      if (options.asUser) {
+        logger.start(`Fetching user context for: ${options.asUser}`);
+        const userContext = await fetchRealUserContext(pool, options.asUser);
+        
+        if (!userContext) {
+          logger.error(`User not found: ${options.asUser}`);
+          process.exit(1);
+        }
+        
+        logger.succeed(`Testing as: ${userContext.email} (${userContext.id})`);
+        
+        // Override config to test with real user
+        config = await createConfigForRealUser(config, userContext, options.table);
+      }
 
       logger.start(CONSOLE_MESSAGES.RUNNING_TESTS);
       const testResults = await executeAllPolicyTestsForConfiguration(
@@ -225,6 +245,51 @@ async function executeTestScenarioForAllOperations(
  */
 function displayTestResultsSummary(results: TestResults, logger: Logger): void {
   logger.raw(formatSummary(results));
+}
+
+/**
+ * Creates a policy configuration for testing with a real user context.
+ */
+async function createConfigForRealUser(
+  originalConfig: PolicyConfig,
+  userContext: any,
+  targetTable?: string
+): Promise<PolicyConfig> {
+  const realUserClaims = createJwtClaimsFromUser(userContext);
+  
+  const modifiedConfig: PolicyConfig = {
+    ...originalConfig,
+    tables: {}
+  };
+
+  // If targeting specific table, only test that one
+  const tablesToTest = targetTable 
+    ? { [targetTable]: originalConfig.tables[targetTable] }
+    : originalConfig.tables;
+
+  // Replace test scenarios with real user context
+  for (const [tableKey, tableConfig] of Object.entries(tablesToTest)) {
+    if (!tableConfig) continue;
+    
+    modifiedConfig.tables[tableKey] = {
+      ...tableConfig,
+      test_scenarios: [
+        {
+          name: `real_user_${userContext.email}`,
+          jwt_claims: realUserClaims,
+          expected: {
+            // Default to ALLOW for real user testing - will show actual behavior
+            SELECT: 'ALLOW',
+            INSERT: 'ALLOW', 
+            UPDATE: 'ALLOW',
+            DELETE: 'ALLOW'
+          }
+        }
+      ]
+    };
+  }
+
+  return modifiedConfig;
 }
 
 /**
