@@ -114,24 +114,24 @@ function printComparisonResult(
   logger: Logger
 ): void {
   if (comparison.isIdentical) {
-    logger.succeed('✅ No changes detected.');
+    logger.succeed('No changes detected.');
     return;
   }
 
-  logger.warn('⚠️ Policy changes detected!');
+  logger.warn('Policy changes detected!');
 
   if (comparison.leaks.length > 0) {
-    logger.error('🚨 Potential security leaks found:');
+    logger.error('Potential security leaks found:');
     logger.raw(comparison.leaks.join('\n'));
   }
 
   if (comparison.regressions.length > 0) {
-    logger.warn('\n🔍 Regressions found:');
+    logger.warn('\nRegressions found:');
     logger.raw(comparison.regressions.join('\n'));
   }
 
   if (comparison.newlyIntroduced.length > 0) {
-    logger.info('\n✨ Newly introduced permissions:');
+    logger.info('\nNewly introduced permissions:');
     logger.raw(comparison.newlyIntroduced.join('\n'));
   }
-} 
+}

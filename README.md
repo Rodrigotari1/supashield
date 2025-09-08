@@ -1,52 +1,42 @@
-# SupaGuard
+# SupaShield
 
-[![npm version](https://img.shields.io/npm/v/supaguard)](https://www.npmjs.com/package/supaguard) [![Node](https://img.shields.io/node/v/supaguard)](https://nodejs.org/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![npm version](https://img.shields.io/npm/v/supashield)](https://www.npmjs.com/package/supashield) [![Node](https://img.shields.io/node/v/supashield)](https://nodejs.org/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Test your Supabase RLS policies before they break in production.
+Catch Supabase RLS security vulnerabilities before they reach production.
 
 ## Features
-- Scans RLS tables and auto-generates tests
-- Probes SELECT / INSERT / UPDATE / DELETE for each role
-- Detects leaks (DENY → ALLOW) and regressions
-- JSON output + non-zero exit codes for CI
-
-## Requirements
-- Node 18+
-- PostgreSQL 13+ (Supabase uses 14)
+- Security vulnerability detection
+- Smart schema discovery  
+- RLS policy testing
+- Real user context testing
+- CI/CD ready
+- Zero configuration
 
 ## Installation
 ```bash
-npm install -g supaguard
+npm install -g supashield
 ```
 
 ## Quick Start
-1. Create a test role (see below)
-2. `export DATABASE_URL=postgresql://supaguard_tester:password@db.supabase.co/postgres`
-3. `supaguard init` — generates `.supasec/policy.yaml`
-4. `supaguard test`
-
-## Usage
-### Commands
 ```bash
-supaguard init             # scaffold tests
-supaguard test             # run all tables
-supaguard test --table public.users  # one table
-supaguard snapshot         # save baseline
-supaguard diff             # compare to baseline
+supashield init                        # discover tables and generate tests
+supashield test                        # test all RLS policies
+supashield test --table public.users   # test specific table
+supashield test --as-user admin@company.com  # test with real user
 ```
 
 ### Example Output
 ```
-🔍 Testing public.users:
-  👤 anonymous_user:
-    ❌ SELECT: ALLOW (expected DENY) - MISMATCH!
-    ✅ INSERT: DENY (expected DENY)
-  👤 authenticated_user:
-    ✅ SELECT: ALLOW (expected ALLOW)
-    ❌ INSERT: DENY (expected ALLOW) - MISMATCH!
+Testing public.users:
+  anonymous_user:
+    SELECT: ALLOW (expected DENY) - MISMATCH!
+    INSERT: DENY (expected DENY) - PASS
+  authenticated_user:
+    SELECT: ALLOW (expected ALLOW) - PASS
+    INSERT: DENY (expected ALLOW) - MISMATCH!
 
-📊 Results: 2 passed, 2 failed
-⚠️ 2 policy mismatches detected!
+Results: 2 passed, 2 failed
+2 policy mismatches detected!
 ```
 
 ## Configuration (`.supasec/policy.yaml`)
@@ -62,17 +52,30 @@ tables:
         expected: { SELECT: ALLOW, INSERT: ALLOW, UPDATE: ALLOW, DELETE: ALLOW }
 ```
 
-## CI
+## Why SupaShield?
+
+**RLS Testing is Hard**
+- Manual testing doesn't scale
+- Complex permission logic is error-prone
+- Security bugs are expensive to fix in production
+
+**SupaShield Makes it Easy**
+- Automatically discovers your schema
+- Tests all CRUD operations for each role
+- Validates real user permissions
+- Integrates with your CI/CD pipeline
+
+## CI/CD Integration
 ```yaml
-- run: supaguard test --json
+- run: supashield test
   env:
     DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
 ```
-Fails the job if any test fails or a leak is detected.
 
 ## Safety
-- Rejects superuser / dangerous roles
-- All probes in rolled-back transactions — no data persists
+- All operations use transactions and rollbacks
+- No data is ever persisted during testing
+- Works safely with production databases
 
 ## License
 MIT
