@@ -4,13 +4,13 @@ export default function Hero() {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/20 via-black to-black" />
+      <div className="absolute inset-0 bg-gradient-to-br from-[#3ECF8E]/10 via-black to-black" />
       
       {/* Grid pattern overlay */}
       <div 
         className="absolute inset-0 opacity-30"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23047857' fill-opacity='0.1'%3E%3Cpath d='M0 0h40v40H0z' stroke='%23047857' stroke-width='0.5'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%233ECF8E' fill-opacity='0.1'%3E%3Cpath d='M0 0h40v40H0z' stroke='%233ECF8E' stroke-width='0.5'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
         }}
       />
 
@@ -18,11 +18,11 @@ export default function Hero() {
         {/* Logo/Brand */}
         <div className="mb-8">
           <h1 className="text-5xl md:text-7xl font-bold mb-4">
-            <span className="text-emerald-400">Supa</span>
+            <span className="text-[#3ECF8E]">Supa</span>
             <span className="text-white">Shield</span>
           </h1>
           <div className="flex justify-center items-center gap-2 text-sm text-gray-400">
-            <span className="bg-emerald-600 text-white px-2 py-1 rounded text-xs">v0.1.0</span>
+            <span className="bg-[#3ECF8E] text-black px-2 py-1 rounded text-xs font-medium">v0.1.0</span>
             <span>•</span>
             <span>MIT License</span>
           </div>
@@ -31,23 +31,22 @@ export default function Hero() {
         {/* Main headline */}
         <div className="mb-8">
           <h2 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
-            Test your Supabase
+            Automated testing for
             <br />
-            <span className="text-emerald-400">RLS policies</span>
+            <span className="text-[#3ECF8E]">Supabase RLS</span>
           </h2>
           
           <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
-            Automated testing for Row Level Security policies.
-            <br />
             Find permission bugs before your users do.
-          </p>
+            <br />
+            Zero configuration. Production safe.          </p>
         </div>
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
           <Link 
             href="#installation"
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors min-w-[200px] inline-block text-center"
+            className="bg-[#3ECF8E] hover:bg-[#3ECF8E]/90 text-black px-8 py-4 rounded-lg font-semibold text-lg transition-colors min-w-[200px] inline-block text-center"
           >
             Get Started
           </Link>
@@ -68,7 +67,7 @@ export default function Hero() {
               Copy
             </button>
           </div>
-          <code className="text-emerald-400 text-lg font-mono">
+          <code className="text-[#3ECF8E] text-lg font-mono">
             npm install -g supashield
           </code>
         </div>
