@@ -1,6 +1,8 @@
 # SupaShield
 
-[![npm version](https://img.shields.io/npm/v/supashield)](https://www.npmjs.com/package/supashield) [![Node](https://img.shields.io/node/v/supashield)](https://nodejs.org/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![npm version](https://img.shields.io/npm/v/supashield)](https://www.npmjs.com/package/supashield) [![Node](https://img.shields.io/node/v/supashield)](https://nodejs.org/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Website](https://img.shields.io/badge/website-supa--shield.vercel.app-green)](https://supa-shield.vercel.app/)
+
+🔗 **[Visit the website](https://supa-shield.vercel.app/)** for full documentation and examples.
 
 Catch Supabase RLS security vulnerabilities before they reach production.
 
@@ -23,6 +25,7 @@ supashield init                        # discover tables and generate tests
 supashield test                        # test all RLS policies
 supashield test --table public.users   # test specific table
 supashield test --as-user admin@company.com  # test with real user
+supashield users                       # list users from auth.users for testing
 ```
 
 ### Example Output
