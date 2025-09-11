@@ -1,7 +1,19 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'Nurom';
+  src: url('/fonts/Nurom-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
 html {
   scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Nurom', system-ui, -apple-system, sans-serif;
 }
 
 /* Custom scrollbar */

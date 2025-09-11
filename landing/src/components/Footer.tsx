@@ -4,51 +4,24 @@ export default function Footer() {
   return (
     <footer className="py-16 px-4 border-t border-gray-800">
       <div className="max-w-6xl mx-auto">
-        <div className="grid md:grid-cols-4 gap-8 mb-8">
+        <div className="grid md:grid-cols-3 gap-8 mb-8">
           {/* Brand */}
           <div className="md:col-span-2">
             <div className="flex items-center gap-2 mb-4">
               <h3 className="text-2xl font-bold">
-                <span className="text-emerald-400">Supa</span>
+                <span className="text-[#3ECF8E]">Supa</span>
                 <span className="text-white">Shield</span>
               </h3>
-              <span className="bg-emerald-600 text-white px-2 py-1 rounded text-xs">v0.1.0</span>
+              <span className="bg-[#3ECF8E] text-black px-2 py-1 rounded text-xs font-medium">v0.1.0</span>
             </div>
             <p className="text-gray-400 max-w-md">
               Test your Supabase RLS policies automatically.
             </p>
           </div>
 
-          {/* Resources */}
+          {/* Community - Only working links */}
           <div>
-            <h4 className="font-semibold mb-4">Resources</h4>
-            <ul className="space-y-2 text-gray-400">
-              <li>
-                <Link href="#" className="hover:text-white transition-colors">
-                  Documentation
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:text-white transition-colors">
-                  API Reference
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:text-white transition-colors">
-                  Examples
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:text-white transition-colors">
-                  Changelog
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Community */}
-          <div>
-            <h4 className="font-semibold mb-4">Community</h4>
+            <h4 className="font-semibold mb-4">Links</h4>
             <ul className="space-y-2 text-gray-400">
               <li>
                 <Link 
@@ -60,18 +33,21 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-white transition-colors">
+                <Link 
+                  href="https://github.com/Rodrigotari1/supa-shield/issues" 
+                  target="_blank"
+                  className="hover:text-white transition-colors"
+                >
                   Issues
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-white transition-colors">
-                  Discussions
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:text-white transition-colors">
-                  Contributing
+                <Link 
+                  href="https://www.npmjs.com/package/supashield" 
+                  target="_blank"
+                  className="hover:text-white transition-colors"
+                >
+                  NPM Package
                 </Link>
               </li>
             </ul>
@@ -100,7 +76,7 @@ export default function Footer() {
               <Link 
                 href="https://github.com/Rodrigotari1" 
                 target="_blank"
-                className="text-emerald-400 hover:text-emerald-300 transition-colors"
+                className="text-[#3ECF8E] hover:text-[#3ECF8E]/80 transition-colors"
               >
                 @Rodrigotari1
               </Link>
