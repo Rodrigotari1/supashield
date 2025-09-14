@@ -39,7 +39,7 @@ export default function Problem() {
           </h2>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
             Every Supabase developer has been here: deployed with confidence, 
-            only to discover users can see each other's data.
+            only to discover users can see each other&apos;s data.
           </p>
         </div>
 
@@ -68,7 +68,7 @@ export default function Problem() {
               <span className="font-bold">The Reality:</span> 67% of data breaches involve misconfigured permissions
             </p>
             <p className="text-gray-400">
-              Don't let your RLS policies be the next security headline.
+              Don&apos;t let your RLS policies be the next security headline.
             </p>
           </div>
         </div>
