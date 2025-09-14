@@ -1,23 +1,23 @@
 export default function Problem() {
   const problems = [
     {
-      title: "Data Leaks in Production",
-      description: "RLS policies fail silently, exposing sensitive user data. One misconfigured policy can leak thousands of records.",
-      impact: "Compliance fines, customer churn, reputation damage"
+      title: "Data Leaks",
+      description: "RLS policies fail silently. One bug exposes all user data.",
+      impact: "Compliance fines, customer churn"
     },
     {
-      title: "Manual Testing Doesn't Scale", 
-      description: "Testing RLS by hand is tedious and error-prone. Complex permission logic is impossible to verify manually.",
-      impact: "Hours wasted, bugs still slip through"
+      title: "Manual Testing", 
+      description: "Testing by hand doesn't scale. Complex logic breaks.",
+      impact: "Hours wasted, bugs slip through"
     },
     {
-      title: "No Visibility into Security",
-      description: "You deploy hoping your RLS policies work correctly. No way to know if permissions are actually enforced.",
-      impact: "Deploy anxiety, security uncertainty"
+      title: "No Visibility",
+      description: "Deploy hoping policies work. No way to verify.",
+      impact: "Deploy anxiety, uncertainty"
     },
     {
-      title: "Expensive to Fix Later",
-      description: "Security bugs found in production require emergency hotfixes, rollbacks, and customer notifications.",
+      title: "Expensive Fixes",
+      description: "Production bugs need emergency hotfixes.",
       impact: "10x more expensive than catching early"
     }
   ]
@@ -38,12 +38,11 @@ export default function Problem() {
             RLS Testing is Broken
           </h2>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-            Every Supabase developer has been here: deployed with confidence, 
-            only to discover users can see each other&apos;s data.
+            Deployed with confidence, only to find users can see each other&apos;s data.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {problems.map((problem, index) => (
             <div 
               key={index}
@@ -64,11 +63,8 @@ export default function Problem() {
 
         <div className="mt-12 text-center">
           <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-6 max-w-2xl mx-auto">
-            <p className="text-lg text-white mb-2">
-              <span className="font-bold">The Reality:</span> 67% of data breaches involve misconfigured permissions
-            </p>
-            <p className="text-gray-400">
-              Don&apos;t let your RLS policies be the next security headline.
+            <p className="text-lg text-white">
+              <span className="font-bold">67%</span> of data breaches involve misconfigured permissions
             </p>
           </div>
         </div>
