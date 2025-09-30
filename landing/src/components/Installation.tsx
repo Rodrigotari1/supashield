@@ -7,16 +7,6 @@ const installMethods = [
     title: 'npm',
     command: 'npm install -g supashield',
     description: 'Install globally with npm'
-  },
-  {
-    title: 'yarn',
-    command: 'yarn global add supashield',
-    description: 'Install globally with yarn'
-  },
-  {
-    title: 'pnpm',
-    command: 'pnpm add -g supashield',
-    description: 'Install globally with pnpm'
   }
 ]
 
@@ -67,7 +57,7 @@ export default function Installation() {
         }}
       />
       
-      <div className="relative z-10 max-w-4xl mx-auto">
+      <div className="relative z-10 max-w-4xl mx-auto px-6 md:px-8 xl:px-12">
         <div className="text-center mb-6 md:mb-10">
           <h2 className="text-4xl md:text-5xl font-bold mb-6">
             Installation

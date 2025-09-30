@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Todo App</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 600px; 
+            margin: 50px auto; 
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .app {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; text-align: center; }
+        .user-list {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .user {
+            background: white;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+        }
+        .salary { 
+            color: #ff6b6b; 
+            font-weight: bold; 
+            font-size: 18px;
+        }
+        .email { 
+            color: #666; 
+            font-size: 14px;
+        }
+        .phone { 
+            color: #555; 
+            font-size: 14px;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <h1>📋 Company Directory</h1>
+        <p>Welcome to our internal employee directory</p>
+        
+        <div class="user-list">
+            <h3>👥 Team Members</h3>
+            <div id="users" class="loading">Loading team data...</div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script>
+        // 🚨 These credentials are exposed to anyone who inspects this page
+        const { createClient } = supabase;
+        const supabaseClient = createClient(
+            'https://vehdggkiqleojjckyyhs.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlaGRnZ2tpcWxlb2pqY2t5eWhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMyNzM0MzYsImV4cCI6MjA2ODg0OTQzNn0.rGpG2RyMYLMbyLI6eWY7yDh1ywx2G9I6QVLgGD-Rl0k'
+        );
+        
+        async function loadUsers() {
+            try {
+                // This should only show current
+                // user's data, but RLS is broken!
+                const { data, error } = await supabaseClient
+                    .from('users')
+                    .select('*');
+                
+                if (error) throw error;
+                
+                const usersDiv = document.getElementById('users');
+                
+                if (data && data.length > 0) {
+                    usersDiv.innerHTML = data.map(user => `
+                        <div class="user">
+                            <div class="email">📧 ${user.email}</div>
+                            <div class="phone">📱 ${user.phone_number || 'No phone'}</div>
+                            <div class="salary">💰 $${user.salary?.toLocaleString() || 'N/A'}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    usersDiv.innerHTML = '<p>No users found</p>';
+                }
+                
+            } catch (error) {
+                console.error('Error loading users:', error);
+                document.getElementById('users').innerHTML = 
+                    '<p style="color: red;">Error loading team data</p>';
+            }
+        }
+        
+        // Load users when page loads
+        loadUsers();
+    </script>
+</body>
+</html>

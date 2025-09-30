@@ -14,7 +14,7 @@ export default function Hero() {
         }}
       />
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 grid lg:grid-cols-2 gap-12 items-center">
+      <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-8 xl:px-12 grid lg:grid-cols-2 gap-12 items-center">
         {/* Left side - Content */}
         <div className="text-left">
         {/* Logo/Brand */}
@@ -39,7 +39,7 @@ export default function Hero() {
           </h2>
           
           <p className="text-xl md:text-2xl text-gray-300 max-w-3xl leading-relaxed">
-            Automated testing for Row Level Security policies.
+            Catch Supabase RLS security vulnerabilities before they reach production.
             <br />
             Find permission bugs before your users do.
           </p>
@@ -51,7 +51,7 @@ export default function Hero() {
             href="#installation"
             className="bg-[#3E8965] hover:bg-[#3E8965]/90 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-300 min-w-[200px] inline-block text-center hover:scale-105 hover:shadow-lg hover:shadow-[#3E8965]/20"
           >
-            Get Started
+            Find Your Bugs Now
           </Link>
           <Link 
             href="https://github.com/Rodrigotari1/supa-shield" 
@@ -60,6 +60,13 @@ export default function Hero() {
           >
             View on GitHub
           </Link>
+        </div>
+
+        {/* Social proof */}
+        <div className="mb-6">
+          <p className="text-sm text-gray-400">
+            Trusted by developers building production Supabase apps
+          </p>
         </div>
 
         {/* Quick install command */}

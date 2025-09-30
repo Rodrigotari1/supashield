@@ -32,7 +32,7 @@ export default function Problem() {
         }}
       />
       
-      <div className="relative z-10 max-w-6xl mx-auto">
+      <div className="relative z-10 max-w-6xl mx-auto px-6 md:px-8 xl:px-12">
         <div className="text-center mb-8 md:mb-12">
           <h2 className="text-4xl md:text-5xl font-bold mb-6">
             RLS Testing is Broken
