@@ -19,6 +19,14 @@ Catch Supabase RLS security vulnerabilities before they reach production.
 npm install -g supashield
 ```
 
+## Setup
+Set your Supabase database URL:
+```bash
+export DATABASE_URL="postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres"
+```
+
+Get this from: **Supabase Dashboard → Settings → Database → Connection string → URI**
+
 ## Quick Start
 ```bash
 supashield init                        # discover tables and generate tests
