@@ -1,6 +1,6 @@
 # SupaShield
 
-[![npm version](https://img.shields.io/npm/v/supashield)](https://www.npmjs.com/package/supashield) [![Node](https://img.shields.io/node/v/supashield)](https://nodejs.org/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Website](https://img.shields.io/badge/website-supa--shield.vercel.app-green)](https://supashield.app/)
+[![npm version](https://img.shields.io/npm/v/supashield)](https://www.npmjs.com/package/supashield) [![Node](https://img.shields.io/node/v/supashield)](https://nodejs.org/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Website](https://img.shields.io/badge/website-supashield.app-green)](https://supashield.app/)
 
 🔗 **[Visit the website](https://supashield.app/)** for full documentation and examples.
 
