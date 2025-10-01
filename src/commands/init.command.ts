@@ -51,7 +51,7 @@ export const initCommand = new Command('init')
         return;
       }
 
-      await createSupasecDirectoryIfNotExists();
+      await createSupashieldDirectoryIfNotExists();
       const policyConfig = generatePolicyConfigurationFromDiscoveredTables(discoveredTables);
       await writePolicyConfigurationToFile(policyConfig);
 
@@ -69,8 +69,8 @@ export const initCommand = new Command('init')
 /**
  * Creates the .supasec directory if it doesn't already exist.
  */
-async function createSupasecDirectoryIfNotExists(): Promise<void> {
-  await mkdir(FILE_PATHS.SUPASEC_DIRECTORY, { recursive: true });
+async function createSupashieldDirectoryIfNotExists(): Promise<void> {
+  await mkdir(FILE_PATHS.SUPASHIELD_DIRECTORY, { recursive: true });
 }
 
 /**
