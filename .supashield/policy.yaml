@@ -1,0 +1,97 @@
+tables:
+  public.admin_logs:
+    test_scenarios:
+      - name: anonymous_user
+        jwt_claims: &a1 {}
+        expected: &a2
+          SELECT: DENY
+          INSERT: DENY
+          UPDATE: DENY
+          DELETE: DENY
+      - name: authenticated_user
+        jwt_claims: &a3
+          sub: user-123
+          role: authenticated
+        expected: &a4
+          SELECT: ALLOW
+          INSERT: ALLOW
+          UPDATE: ALLOW
+          DELETE: ALLOW
+  public.audit_trail:
+    test_scenarios:
+      - name: anonymous_user
+        jwt_claims: *a1
+        expected: *a2
+      - name: authenticated_user
+        jwt_claims: *a3
+        expected: *a4
+  public.comments:
+    test_scenarios:
+      - name: anonymous_user
+        jwt_claims: *a1
+        expected: *a2
+      - name: authenticated_user
+        jwt_claims: *a3
+        expected: *a4
+  public.company_secrets:
+    test_scenarios:
+      - name: anonymous_user
+        jwt_claims: *a1
+        expected: *a2
+      - name: authenticated_user
+        jwt_claims: *a3
+        expected: *a4
+  public.payments:
+    test_scenarios:
+      - name: anonymous_user
+        jwt_claims: *a1
+        expected: *a2
+      - name: authenticated_user
+        jwt_claims: *a3
+        expected: *a4
+  public.posts:
+    test_scenarios:
+      - name: anonymous_user
+        jwt_claims: *a1
+        expected: *a2
+      - name: authenticated_user
+        jwt_claims: *a3
+        expected: *a4
+  public.private_notes:
+    test_scenarios:
+      - name: anonymous_user
+        jwt_claims: *a1
+        expected: *a2
+      - name: authenticated_user
+        jwt_claims: *a3
+        expected: *a4
+  public.temporary_uploads:
+    test_scenarios:
+      - name: anonymous_user
+        jwt_claims: *a1
+        expected: *a2
+      - name: authenticated_user
+        jwt_claims: *a3
+        expected: *a4
+  public.user_sessions:
+    test_scenarios:
+      - name: anonymous_user
+        jwt_claims: *a1
+        expected: *a2
+      - name: authenticated_user
+        jwt_claims: *a3
+        expected: *a4
+  public.users:
+    test_scenarios:
+      - name: anonymous_user
+        jwt_claims: *a1
+        expected: *a2
+      - name: authenticated_user
+        jwt_claims: *a3
+        expected: *a4
+defaults:
+  anonymous_user_expectations: *a2
+  authenticated_user_expectations: *a4
+  default_jwt_claims:
+    anonymous: *a1
+    authenticated: *a3
