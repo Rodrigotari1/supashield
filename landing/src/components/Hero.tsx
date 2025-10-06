@@ -62,13 +62,6 @@ export default function Hero() {
           </Link>
         </div>
 
-        {/* Social proof */}
-        <div className="mb-6">
-          <p className="text-sm text-gray-400">
-            Trusted by developers building production Supabase apps
-          </p>
-        </div>
-
         {/* Quick install command */}
         <div className="bg-gray-900/50 backdrop-blur border border-gray-800 rounded-lg p-6 max-w-2xl hover:border-gray-700 transition-all duration-300 hover:bg-gray-900/60">
           <div className="flex items-center justify-between mb-2">

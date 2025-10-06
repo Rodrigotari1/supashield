@@ -50,7 +50,7 @@ Results: 2 passed, 2 failed
 2 policy mismatches detected!
 ```
 
-## Configuration (`.supasec/policy.yaml`)
+## Configuration (`.supashield/policy.yaml`)
 ```yaml
 tables:
   public.users:

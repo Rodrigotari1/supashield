@@ -56,10 +56,6 @@ export default function Footer() {
 
         {/* Bottom */}
         <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-gray-800">
-          <div className="text-gray-400 text-sm mb-4 md:mb-0">
-            © 2024 SupaShield. Released under the MIT License.
-          </div>
-          
           <div className="flex items-center gap-6">
             <Link 
               href="https://github.com/Rodrigotari1/supa-shield"
