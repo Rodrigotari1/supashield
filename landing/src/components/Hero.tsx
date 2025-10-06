@@ -56,6 +56,7 @@ export default function Hero() {
           <Link 
             href="https://github.com/Rodrigotari1/supa-shield" 
             target="_blank"
+            rel="noopener noreferrer"
             className="border border-gray-600 hover:border-gray-400 text-gray-300 hover:text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-300 min-w-[200px] inline-block text-center hover:scale-105 hover:bg-gray-800/20"
           >
             View on GitHub

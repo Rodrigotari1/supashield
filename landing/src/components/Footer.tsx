@@ -27,6 +27,7 @@ export default function Footer() {
                 <Link 
                   href="https://github.com/Rodrigotari1/supa-shield" 
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="hover:text-white transition-colors"
                 >
                   GitHub
@@ -36,6 +37,7 @@ export default function Footer() {
                 <Link 
                   href="https://github.com/Rodrigotari1/supa-shield/issues" 
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="hover:text-white transition-colors"
                 >
                   Issues
@@ -45,6 +47,7 @@ export default function Footer() {
                 <Link 
                   href="https://www.npmjs.com/package/supashield" 
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="hover:text-white transition-colors"
                 >
                   NPM Package
@@ -60,6 +63,7 @@ export default function Footer() {
             <Link 
               href="https://github.com/Rodrigotari1/supa-shield"
               target="_blank"
+              rel="noopener noreferrer"
               className="text-gray-400 hover:text-white transition-colors"
             >
               <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -72,6 +76,7 @@ export default function Footer() {
               <Link 
                 href="https://github.com/Rodrigotari1" 
                 target="_blank"
+                rel="noopener noreferrer"
                 className="text-[#3ECF8E] hover:text-[#3ECF8E]/80 transition-colors"
               >
                 @Rodrigotari1
