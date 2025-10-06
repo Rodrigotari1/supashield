@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Just shield + bolt, super clean -->
+  <path fill="#3ECF8E" d="M32 4 L52 14 V28 C52 41 41 50 32 54 C23 50 12 41 12 28 V14 Z"/>
+  <path fill="#0F1720" d="M34 18 L26 30 L30 30 L28 42 L38 28 L34 28 Z"/>
+</svg>
+
