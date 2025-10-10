@@ -88,5 +88,8 @@ tables:
 - No data is ever persisted during testing
 - Works safely with production databases
 
+## Disclaimer
+This tool tests RLS policies using safe, rolled-back transactions. Always test on staging/local environments first. Use at your own risk. Not liable for data loss.
+
 ## License
 MIT
