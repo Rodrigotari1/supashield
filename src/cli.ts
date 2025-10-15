@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { Command } from 'commander';
 import { initCommand } from './commands/init.command.js';
 import { testCommand } from './commands/test.command.js';
+import { exportPgtapCommand } from './commands/export-pgtap.command.js';
 
 const program = new Command();
 
@@ -48,5 +49,6 @@ program
 
 program.addCommand(initCommand);
 program.addCommand(testCommand);
+program.addCommand(exportPgtapCommand);
 
 program.parse(); 
