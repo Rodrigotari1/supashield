@@ -34,6 +34,7 @@ supashield test                        # test all RLS policies
 supashield test --table public.users   # test specific table
 supashield test --as-user admin@company.com  # test with real user
 supashield users                       # list users from auth.users for testing
+supashield export-pgtap -o tests.sql   # export tests to pgTap format
 ```
 
 ### Example Output
