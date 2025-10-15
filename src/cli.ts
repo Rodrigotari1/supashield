@@ -17,10 +17,10 @@ program
   .option('-u, --url <url>', 'Database connection URL')
   .action(async (options) => {
     const { createDatabaseConnectionConfig, establishValidatedDatabaseConnection } = await import('./core/db.js');
-    const dbUrl = options.url || process.env.DATABASE_URL;
+    const dbUrl = options.url || process.env.SUPASHIELD_DATABASE_URL || process.env.DATABASE_URL;
     
     if (!dbUrl) {
-      console.log('Database URL is required. Use --url or set DATABASE_URL env var.');
+      console.log('Database URL is required. Use --url or set SUPASHIELD_DATABASE_URL (or DATABASE_URL) env var.');
       process.exit(1);
     }
     

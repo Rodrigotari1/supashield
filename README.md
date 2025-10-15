@@ -22,10 +22,12 @@ npm install -g supashield
 ## Setup
 Set your Supabase database URL:
 ```bash
-export DATABASE_URL="postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres"
+export SUPASHIELD_DATABASE_URL="postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres"
 ```
 
 Get this from: **Supabase Dashboard → Settings → Database → Connection string → URI**
+
+**Note:** `DATABASE_URL` is also supported for backwards compatibility.
 
 ## Quick Start
 ```bash
@@ -81,7 +83,7 @@ tables:
 ```yaml
 - run: supashield test
   env:
-    DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+    SUPASHIELD_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
 ```
 
 ## Safety
