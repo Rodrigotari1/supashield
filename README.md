@@ -104,7 +104,7 @@ storage_buckets:
 
 ## Feature Requests
 
-Got an idea? [Open an issue](https://github.com/Rodrigotari1/supashield/issues/new) or ping me on [X/Twitter](https://x.com/rodrigotlmz).
+Got an idea? [Open an issue](https://github.com/Rodrigotari1/supashield/issues/new) or ping me on [X/Twitter](https://x.com/rodrigotari_).
 
 ## Disclaimer
 This tool tests RLS policies using safe, rolled-back transactions. Always test on staging/local environments first. Use at your own risk. Not liable for data loss.
