@@ -33,13 +33,13 @@ export function createLogger(verbose = false): Logger {
       spinner.fail(chalk.red(text));
     },
     info: (text: string) => {
-      console.log(chalk.blue(`ℹ ${text}`));
+      console.log(chalk.blue(`INFO: ${text}`));
     },
     warn: (text: string) => {
-      console.log(chalk.yellow(`⚠️ ${text}`));
+      console.log(chalk.yellow(`WARNING: ${text}`));
     },
     error: (text: string, error?: unknown) => {
-      console.error(chalk.red(`❌ Error: ${text}`));
+      console.error(chalk.red(`ERROR: ${text}`));
       if (verbose && error instanceof Error) {
         console.error(chalk.gray(error.stack || error.message));
       }
@@ -103,4 +103,18 @@ export function formatDiscoveredTables(tables: any[]): string {
   });
 
   return `\nFound tables:\n${formattedTables.join('\n')}`;
+}
+
+/**
+ * Formats a list of discovered storage buckets for console output.
+ * @param buckets - An array of storage buckets with their policy count.
+ * @returns A formatted string.
+ */
+export function formatDiscoveredBuckets(buckets: any[]): string {
+  const formattedBuckets = buckets.map(bucket => {
+    const publicStatus = bucket.public ? 'public' : 'private';
+    return `  - ${bucket.name} (${bucket.policies.length} policies, ${publicStatus})`;
+  });
+
+  return `\nFound storage buckets:\n${formattedBuckets.join('\n')}`;
 } 

@@ -4,6 +4,13 @@ export interface TableMeta {
   policies: PolicyInfo[];
 }
 
+export interface StorageBucketMeta {
+  bucket_id: string;
+  name: string;
+  policies: PolicyInfo[];
+  public: boolean;
+}
+
 export interface PolicyInfo {
   name: string;
   command: DatabaseOperation;
@@ -24,10 +31,18 @@ export interface PolicyConfig {
   tables: {
     [tableKey: string]: TableTestConfiguration;
   };
+  storage_buckets?: {
+    [bucketKey: string]: StorageBucketTestConfiguration;
+  };
   defaults?: DefaultTestConfiguration;
 }
 
 export interface TableTestConfiguration {
+  test_scenarios: TestScenario[];
+  custom_operations?: DatabaseOperation[];
+}
+
+export interface StorageBucketTestConfiguration {
   test_scenarios: TestScenario[];
   custom_operations?: DatabaseOperation[];
 }

@@ -393,4 +393,136 @@ export function createJwtClaimsFromUser(user: RealUserContext): Record<string, a
     // Add any custom claims from metadata
     ...user.raw_app_meta_data,
   };
+}
+
+/**
+ * Tests if a specific storage operation is allowed for a user with given JWT claims.
+ * Uses transactional safety to ensure no data persists even if operations succeed.
+ */
+export async function executeStorageRlsPolicyProbeForOperation(
+  pool: Pool,
+  bucketId: string,
+  operation: DatabaseOperation,
+  jwtClaims: Record<string, any>,
+): Promise<ProbeResult> {
+  const client = await pool.connect();
+  
+  try {
+    await initializeTransactionalTestSession(client);
+    await configureSessionForUserContext(client, jwtClaims);
+    await createSavepointForOperationTest(client);
+    
+    const result = await attemptStorageOperationWithRlsEvaluation(
+      client, 
+      bucketId, 
+      operation
+    );
+    
+    await rollbackToSavepointAfterTest(client);
+    return result;
+    
+  } catch (error) {
+    return 'ERROR';
+  } finally {
+    await rollbackEntireTransactionForCleanup(client);
+    client.release();
+  }
+}
+
+/**
+ * Attempts a storage operation and evaluates the result based on RLS policies.
+ */
+async function attemptStorageOperationWithRlsEvaluation(
+  client: PoolClient,
+  bucketId: string,
+  operation: DatabaseOperation,
+): Promise<ProbeResult> {
+  const testObjectPath = `test-${randomUUID()}.txt`;
+
+  try {
+    switch (operation) {
+      case 'SELECT':
+        return await executeStorageSelectOperationAndEvaluateResult(client, bucketId, testObjectPath);
+      
+      case 'INSERT':
+        return await executeStorageInsertOperationAndEvaluateResult(client, bucketId, testObjectPath);
+      
+      case 'UPDATE':
+        return await executeStorageUpdateOperationAndEvaluateResult(client, bucketId, testObjectPath);
+      
+      case 'DELETE':
+        return await executeStorageDeleteOperationAndEvaluateResult(client, bucketId, testObjectPath);
+      
+      default:
+        return 'ERROR';
+    }
+  } catch (error: any) {
+    return interpretDatabaseErrorAsProbeResult(error);
+  }
+}
+
+/**
+ * Executes a SELECT operation on storage.objects and evaluates the result.
+ */
+async function executeStorageSelectOperationAndEvaluateResult(
+  client: PoolClient, 
+  bucketId: string,
+  objectPath: string
+): Promise<ProbeResult> {
+  const result = await client.query(
+    `SELECT * FROM storage.objects WHERE bucket_id = $1 AND name = $2 LIMIT 1`,
+    [bucketId, objectPath]
+  );
+  return result.rows.length > 0 ? 'ALLOW' : 'DENY';
+}
+
+/**
+ * Executes an INSERT operation on storage.objects and evaluates the result.
+ */
+async function executeStorageInsertOperationAndEvaluateResult(
+  client: PoolClient,
+  bucketId: string,
+  objectPath: string
+): Promise<ProbeResult> {
+  await client.query(`
+    INSERT INTO storage.objects (bucket_id, name, owner, path_tokens)
+    VALUES ($1, $2, auth.uid(), $3)
+  `, [bucketId, objectPath, [objectPath]]);
+  
+  return 'ALLOW';
+}
+
+/**
+ * Executes an UPDATE operation on storage.objects and evaluates the result.
+ */
+async function executeStorageUpdateOperationAndEvaluateResult(
+  client: PoolClient, 
+  bucketId: string,
+  objectPath: string
+): Promise<ProbeResult> {
+  const result = await client.query(`
+    UPDATE storage.objects 
+    SET metadata = jsonb_build_object('updated', true)
+    WHERE bucket_id = $1 AND name = $2
+  `, [bucketId, objectPath]);
+  
+  const affectedRows = result.rowCount ?? 0;
+  return affectedRows > 0 ? 'ALLOW' : 'DENY';
+}
+
+/**
+ * Executes a DELETE operation on storage.objects and evaluates the result.
+ */
+async function executeStorageDeleteOperationAndEvaluateResult(
+  client: PoolClient, 
+  bucketId: string,
+  objectPath: string
+): Promise<ProbeResult> {
+  const result = await client.query(`
+    DELETE FROM storage.objects 
+    WHERE bucket_id = $1 AND name = $2
+  `, [bucketId, objectPath]);
+  
+  const affectedRows = result.rowCount ?? 0;
+  return affectedRows > 0 ? 'ALLOW' : 'DENY';
 } 

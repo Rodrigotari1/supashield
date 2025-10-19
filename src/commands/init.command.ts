@@ -5,8 +5,8 @@ import {
   establishValidatedDatabaseConnection,
   createDatabaseConnectionConfig
 } from '../core/db.js';
-import { introspectSchema } from '../core/introspect.js';
-import type { PolicyConfig, TableTestConfiguration } from '../shared/types.js';
+import { introspectSchema, introspectStorageBuckets } from '../core/introspect.js';
+import type { PolicyConfig, TableTestConfiguration, StorageBucketTestConfiguration } from '../shared/types.js';
 import {
   DEFAULT_TEST_CONFIGURATION,
   DEFAULT_TEST_SCENARIO_NAMES,
@@ -16,6 +16,7 @@ import {
 import {
   createLogger,
   formatDiscoveredTables,
+  formatDiscoveredBuckets,
   Logger,
 } from '../shared/logger.js';
 
@@ -43,22 +44,29 @@ export const initCommand = new Command('init')
       const discoveredTables = await introspectSchema(pool, {
         includeSystemSchemas: options.allSchemas
       });
+      
+      logger.start('Introspecting storage buckets...');
+      const discoveredBuckets = await introspectStorageBuckets(pool);
       await pool.end();
-      logger.succeed('Schema introspection complete.');
+      logger.succeed('Schema and storage introspection complete.');
 
-      if (discoveredTables.length === 0) {
-        logger.warn('No tables with RLS enabled found.');
+      if (discoveredTables.length === 0 && discoveredBuckets.length === 0) {
+        logger.warn('No tables with RLS enabled or storage buckets found.');
         return;
       }
 
       await createSupashieldDirectoryIfNotExists();
-      const policyConfig = generatePolicyConfigurationFromDiscoveredTables(discoveredTables);
+      const policyConfig = generatePolicyConfigurationFromDiscoveredTables(discoveredTables, discoveredBuckets);
       await writePolicyConfigurationToFile(policyConfig);
 
-      logger.succeed(`Generated ${FILE_PATHS.POLICY_CONFIG_FILE} with ${discoveredTables.length} tables`);
+      const totalItems = discoveredTables.length + discoveredBuckets.length;
+      logger.succeed(`Generated ${FILE_PATHS.POLICY_CONFIG_FILE} with ${discoveredTables.length} tables and ${discoveredBuckets.length} storage buckets`);
       logger.info('Edit the file to customize test scenarios and expected permissions');
 
       logger.raw(formatDiscoveredTables(discoveredTables));
+      if (discoveredBuckets.length > 0) {
+        logger.raw(formatDiscoveredBuckets(discoveredBuckets));
+      }
 
     } catch (error) {
       logger.error('An unexpected error occurred during initialization.', error);
@@ -74,19 +82,26 @@ async function createSupashieldDirectoryIfNotExists(): Promise<void> {
 }
 
 /**
- * Generates a policy configuration from discovered database tables.
+ * Generates a policy configuration from discovered database tables and storage buckets.
  */
 function generatePolicyConfigurationFromDiscoveredTables(
-  discoveredTables: any[]
+  discoveredTables: any[],
+  discoveredBuckets: any[] = []
 ): PolicyConfig {
   const config: PolicyConfig = {
     tables: {},
+    storage_buckets: {},
     defaults: DEFAULT_TEST_CONFIGURATION,
   };
 
   discoveredTables.forEach((table) => {
     const tableKey = createTableKeyFromSchemaAndName(table.schema, table.name);
     config.tables[tableKey] = createDefaultTableTestConfiguration();
+  });
+
+  discoveredBuckets.forEach((bucket) => {
+    const bucketKey = bucket.name;
+    config.storage_buckets![bucketKey] = createDefaultStorageBucketTestConfiguration();
   });
 
   return config;
@@ -103,6 +118,26 @@ function createTableKeyFromSchemaAndName(schema: string, tableName: string): str
  * Creates a default test configuration for a table.
  */
 function createDefaultTableTestConfiguration(): TableTestConfiguration {
+  return {
+    test_scenarios: [
+      {
+        name: DEFAULT_TEST_SCENARIO_NAMES.ANONYMOUS_USER,
+        jwt_claims: DEFAULT_TEST_CONFIGURATION.default_jwt_claims.anonymous,
+        expected: DEFAULT_TEST_CONFIGURATION.anonymous_user_expectations,
+      },
+      {
+        name: DEFAULT_TEST_SCENARIO_NAMES.AUTHENTICATED_USER,
+        jwt_claims: DEFAULT_TEST_CONFIGURATION.default_jwt_claims.authenticated,
+        expected: DEFAULT_TEST_CONFIGURATION.authenticated_user_expectations,
+      },
+    ],
+  };
+}
+
+/**
+ * Creates a default test configuration for a storage bucket.
+ */
+function createDefaultStorageBucketTestConfiguration(): StorageBucketTestConfiguration {
   return {
     test_scenarios: [
       {
