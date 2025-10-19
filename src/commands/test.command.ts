@@ -1,6 +1,4 @@
 import { Command } from 'commander';
-import { readFile } from 'fs/promises';
-import { parse } from 'yaml';
 import {
   establishValidatedDatabaseConnection,
   createDatabaseConnectionConfig
@@ -12,7 +10,6 @@ import {
 } from '../core/simulate.js';
 import type {
   PolicyConfig,
-  PolicyMatrix,
   TestResults,
   TestResultDetail,
   DatabaseOperation
@@ -20,7 +17,6 @@ import type {
 import {
   SUPPORTED_DATABASE_OPERATIONS,
   CONSOLE_MESSAGES,
-  FILE_PATHS,
 } from '../shared/constants.js';
 import {
   createLogger,
@@ -28,6 +24,11 @@ import {
   formatSummary,
   Logger,
 } from '../shared/logger.js';
+import {
+  updateTestCounters,
+  exitWithTestResults,
+  loadPolicyConfig,
+} from '../shared/test-utils.js';
 
 export const testCommand = new Command('test')
   .description('Test RLS policies for data leaks and access violations')
@@ -49,7 +50,7 @@ export const testCommand = new Command('test')
       const startTime = performance.now();
 
       logger.start(CONSOLE_MESSAGES.LOADING_CONFIG);
-      let config = await loadPolicyConfigurationFromFile();
+      let config = await loadPolicyConfig();
       logger.succeed('Policy configuration loaded.');
 
       logger.start(CONSOLE_MESSAGES.CONNECTING);
@@ -93,8 +94,8 @@ export const testCommand = new Command('test')
       const endTime = performance.now();
       testResults.execution_time_ms = endTime - startTime;
 
-      displayTestResultsSummary(testResults, logger);
-      determineProcessExitCode(testResults, logger);
+      logger.raw(formatSummary(testResults));
+      exitWithTestResults(testResults, logger);
 
     } catch (error) {
       logger.error('An unexpected error occurred during testing.', error);
@@ -102,13 +103,6 @@ export const testCommand = new Command('test')
     }
   });
 
-/**
- * Loads policy configuration from the standard policy file location.
- */
-async function loadPolicyConfigurationFromFile(): Promise<PolicyConfig> {
-  const yamlContent = await readFile(FILE_PATHS.POLICY_CONFIG_FILE, 'utf-8');
-  return parse(yamlContent);
-}
 
 /**
  * Executes all policy tests defined in the configuration.
@@ -156,16 +150,8 @@ async function executeAllPolicyTestsForConfiguration(
 
       results.detailed_results.push(...scenarioResults);
 
-      // Update counters
       for (const result of scenarioResults) {
-        results.total_tests++;
-        if (result.passed) {
-          results.passed_tests++;
-        } else if (result.actual === 'ERROR') {
-          results.error_tests++;
-        } else {
-          results.failed_tests++;
-        }
+        updateTestCounters(results, result);
       }
     }
   }
@@ -241,13 +227,6 @@ async function executeTestScenarioForAllOperations(
 }
 
 /**
- * Displays a comprehensive summary of test results.
- */
-function displayTestResultsSummary(results: TestResults, logger: Logger): void {
-  logger.raw(formatSummary(results));
-}
-
-/**
  * Creates a policy configuration for testing with a real user context.
  */
 async function createConfigForRealUser(
@@ -290,19 +269,4 @@ async function createConfigForRealUser(
   }
 
   return modifiedConfig;
-}
-
-/**
- * Determines the appropriate process exit code based on test results.
- */
-function determineProcessExitCode(results: TestResults, logger: Logger): void {
-  const totalFailures = results.failed_tests + results.error_tests;
-
-  if (totalFailures > 0) {
-    logger.error(CONSOLE_MESSAGES.ERROR_MISMATCHES_DETECTED(totalFailures));
-    logger.info(CONSOLE_MESSAGES.REVIEW_POLICIES);
-    process.exit(1);
-  } else {
-    logger.succeed(CONSOLE_MESSAGES.SUCCESS_ALL_PASSED);
-  }
 } 
