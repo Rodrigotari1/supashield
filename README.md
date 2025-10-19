@@ -9,7 +9,7 @@ Catch Supabase RLS security vulnerabilities before they reach production.
 ## Features
 - Security vulnerability detection
 - Smart schema discovery  
-- RLS policy testing
+- RLS policy testing (tables + storage buckets)
 - Real user context testing
 - CI/CD ready
 - Zero configuration
@@ -31,8 +31,9 @@ Get this from: **Supabase Dashboard → Settings → Database → Connection str
 
 ## Quick Start
 ```bash
-supashield init                        # discover tables and generate tests
-supashield test                        # test all RLS policies
+supashield init                        # discover tables and storage buckets
+supashield test                        # test all table RLS policies
+supashield test-storage                # test storage bucket RLS policies
 supashield test --table public.users   # test specific table
 supashield test --as-user admin@company.com  # test with real user
 supashield users                       # list users from auth.users for testing
@@ -57,6 +58,16 @@ Results: 2 passed, 2 failed
 ```yaml
 tables:
   public.users:
+    test_scenarios:
+      - name: anonymous_user
+        jwt_claims: {}
+        expected: { SELECT: DENY, INSERT: DENY, UPDATE: DENY, DELETE: DENY }
+      - name: authenticated_user
+        jwt_claims: { sub: "user-123", role: "authenticated" }
+        expected: { SELECT: ALLOW, INSERT: ALLOW, UPDATE: ALLOW, DELETE: ALLOW }
+
+storage_buckets:
+  avatars:
     test_scenarios:
       - name: anonymous_user
         jwt_claims: {}
@@ -90,6 +101,10 @@ tables:
 - All operations use transactions and rollbacks
 - No data is ever persisted during testing
 - Works safely with production databases
+
+## Feature Requests
+
+Got an idea? [Open an issue](https://github.com/Rodrigotari1/supashield/issues/new) or ping me on [X/Twitter](https://x.com/rodrigotlmz).
 
 ## Disclaimer
 This tool tests RLS policies using safe, rolled-back transactions. Always test on staging/local environments first. Use at your own risk. Not liable for data loss.
