@@ -22,10 +22,12 @@ npm install -g supashield
 ## Setup
 Set your Supabase database URL:
 ```bash
-export SUPASHIELD_DATABASE_URL="postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres"
+export SUPASHIELD_DATABASE_URL="postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres"
 ```
 
-Get this from: **Supabase Dashboard → Settings → Database → Connection string → URI**
+Get this from: **Supabase Dashboard → Settings → Database → Connection string → Session pooler**
+
+**Important:** Use the **Session pooler** connection string (port 6543), not the Direct connection. Session pooler is IPv4 compatible and works everywhere.
 
 **Note:** `DATABASE_URL` is also supported for backwards compatibility.
 

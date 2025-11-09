@@ -19,6 +19,7 @@ import {
   formatDiscoveredBuckets,
   Logger,
 } from '../shared/logger.js';
+import { BANNER } from '../shared/banner.js';
 
 export const initCommand = new Command('init')
   .description('Discover your public tables and generate RLS tests')
@@ -27,10 +28,14 @@ export const initCommand = new Command('init')
   .option('--verbose', 'Enable verbose logging')
   .action(async (options) => {
     const logger = createLogger(options.verbose);
-    const dbUrl = options.url || process.env.DATABASE_URL;
+    
+    // Show banner on init
+    console.log(BANNER);
+    
+    const dbUrl = options.url || process.env.SUPASHIELD_DATABASE_URL || process.env.DATABASE_URL;
 
     if (!dbUrl) {
-      logger.error('Database URL is required. Use --url or set DATABASE_URL env var.');
+      logger.error('Database URL is required. Use --url or set SUPASHIELD_DATABASE_URL env var.');
       process.exit(1);
     }
 
@@ -69,7 +74,15 @@ export const initCommand = new Command('init')
       }
 
     } catch (error) {
-      logger.error('An unexpected error occurred during initialization.', error);
+      logger.error('Initialization failed');
+      if (error instanceof Error) {
+        logger.raw(`\n${error.message}`);
+        if (options.verbose && error.stack) {
+          logger.raw(`\nStack trace:\n${error.stack}`);
+        }
+      } else {
+        logger.raw(`\nUnknown error: ${String(error)}`);
+      }
       process.exit(1);
     }
   });

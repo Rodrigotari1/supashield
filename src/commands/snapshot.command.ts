@@ -27,10 +27,10 @@ export const snapshotCommand = new Command('snapshot')
   .option('--verbose', 'Enable verbose logging')
   .action(async (options) => {
     const logger = createLogger(options.verbose);
-    const dbUrl = options.url || process.env.DATABASE_URL;
+    const dbUrl = options.url || process.env.SUPASHIELD_DATABASE_URL || process.env.DATABASE_URL;
 
     if (!dbUrl) {
-      logger.error('Database URL is required. Use --url or set DATABASE_URL env var.');
+      logger.error('Database URL is required. Use --url or set SUPASHIELD_DATABASE_URL env var.');
       process.exit(1);
     }
 

@@ -3,6 +3,7 @@ node_modules/
 dist/
 coverage/
 .supasec/
+.supashield/
 *.log
 .DS_Store
 design.md
@@ -11,3 +12,8 @@ design.md
 .env.*.local
 src/utils/simulate.ts
 .env.test
+
+# IDE
+.idea/
+.vscode/
+*.iml
