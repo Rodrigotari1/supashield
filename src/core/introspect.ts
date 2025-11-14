@@ -22,20 +22,40 @@ export async function introspectSchema(pool: Pool, options: { includeSystemSchem
  */
 async function discoverTablesWithRowLevelSecurityEnabled(client: PoolClient, includeSystemSchemas = false): Promise<Array<{schema: string, name: string}>> {
   const schemaCondition = includeSystemSchemas 
-    ? createExcludedSchemasCondition() 
-    : "schemaname = 'public'";
+    ? createExcludedSchemasNspCondition() 
+    : "nsp.nspname = 'public'";
   
   const tablesQuery = `
     SELECT 
-      schemaname as schema,
-      tablename as name
-    FROM pg_tables 
-    WHERE ${schemaCondition}
-    ORDER BY schemaname, tablename;
+      nsp.nspname as schema,
+      cls.relname as name,
+      cls.relrowsecurity as rls_enabled,
+      cls.relforcerowsecurity as rls_forced
+    FROM pg_class cls
+    JOIN pg_namespace nsp ON cls.relnamespace = nsp.oid
+    WHERE cls.relkind = 'r'
+      AND ${schemaCondition}
+    ORDER BY nsp.nspname, cls.relname;
   `;
 
-  const { rows: tables } = await client.query(tablesQuery);
-  return tables;
+  const { rows: allTables } = await client.query(tablesQuery);
+  
+  // Separate tables with RLS enabled and disabled
+  const rlsEnabledTables = allTables.filter((t: any) => t.rls_enabled);
+  const rlsDisabledTables = allTables.filter((t: any) => !t.rls_enabled);
+  
+  // Log critical warning for tables without RLS
+  if (rlsDisabledTables.length > 0) {
+    console.log('\nCRITICAL SECURITY WARNING');
+    console.log('The following tables have RLS DISABLED and may expose ALL data:');
+    rlsDisabledTables.forEach((t: any) => {
+      console.log(`  ${t.schema}.${t.name}`);
+    });
+    console.log('\nTo enable RLS on a table, run:');
+    console.log('  ALTER TABLE schema.table_name ENABLE ROW LEVEL SECURITY;\n');
+  }
+  
+  return rlsEnabledTables;
 }
 
 /**
@@ -47,6 +67,17 @@ function createExcludedSchemasCondition(): string {
     .join(', ');
   
   return `schemaname NOT IN (${schemaList})`;
+}
+
+/**
+ * Creates a SQL condition to exclude system schemas from introspection (for pg_namespace queries).
+ */
+function createExcludedSchemasNspCondition(): string {
+  const schemaList = EXCLUDED_SCHEMAS_FROM_INTROSPECTION
+    .map(schema => `'${schema}'`)
+    .join(', ');
+  
+  return `nsp.nspname NOT IN (${schemaList})`;
 }
 
 /**

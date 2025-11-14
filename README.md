@@ -33,6 +33,7 @@ Get this from: **Supabase Dashboard → Settings → Database → Connection str
 
 ## Quick Start
 ```bash
+supashield audit                       # scan for common RLS security issues
 supashield init                        # discover tables and storage buckets
 supashield test                        # test all table RLS policies
 supashield test-storage                # test storage bucket RLS policies
@@ -43,17 +44,16 @@ supashield export-pgtap -o tests.sql   # export tests to pgTap format
 ```
 
 ### Example Output
-```
 Testing public.users:
   anonymous_user:
-    SELECT: ALLOW (expected DENY) - MISMATCH!
+    SELECT: ALLOW (expected DENY) - MISMATCH
     INSERT: DENY (expected DENY) - PASS
   authenticated_user:
     SELECT: ALLOW (expected ALLOW) - PASS
-    INSERT: DENY (expected ALLOW) - MISMATCH!
+    INSERT: DENY (expected ALLOW) - MISMATCH
 
 Results: 2 passed, 2 failed
-2 policy mismatches detected!
+2 policy mismatches detected
 ```
 
 ## Configuration (`.supashield/policy.yaml`)

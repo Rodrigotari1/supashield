@@ -4,6 +4,7 @@ import { initCommand } from './commands/init.command.js';
 import { testCommand } from './commands/test.command.js';
 import { testStorageCommand } from './commands/test-storage.command.js';
 import { exportPgtapCommand } from './commands/export-pgtap.command.js';
+import { auditCommand } from './commands/audit.command.js';
 
 const program = new Command();
 
@@ -48,6 +49,7 @@ program
     }
   });
 
+program.addCommand(auditCommand);
 program.addCommand(initCommand);
 program.addCommand(testCommand);
 program.addCommand(testStorageCommand);

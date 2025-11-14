@@ -30,6 +30,13 @@ export async function executeRlsPolicyProbeForOperation(
   
   try {
     await initializeTransactionalTestSession(client);
+    
+    // For SELECT/UPDATE/DELETE, we need test data to be present
+    // Insert it as postgres (bypassing RLS) before switching to test user
+    if (operation !== 'INSERT') {
+      await seedTestDataAsSuperuser(client, schema, table);
+    }
+    
     await configureSessionForUserContext(client, jwtClaims);
     await createSavepointForOperationTest(client);
     
@@ -56,6 +63,48 @@ export async function executeRlsPolicyProbeForOperation(
  */
 async function initializeTransactionalTestSession(client: PoolClient): Promise<void> {
   await client.query('BEGIN');
+}
+
+/**
+ * Seeds test data into the table as superuser (bypassing RLS).
+ * This ensures SELECT/UPDATE/DELETE have data to test against.
+ */
+async function seedTestDataAsSuperuser(
+  client: PoolClient,
+  schema: string,
+  table: string
+): Promise<void> {
+  const fullyQualifiedTableName = createFullyQualifiedTableName(schema, table);
+  
+  try {
+    // Use postgres role to bypass RLS for seeding
+    await client.query('SET LOCAL ROLE postgres');
+    
+    const columns = await introspectTableColumnsForInsertOperation(client, schema, table);
+    
+    if (columns.length === 0) return;
+
+    const { columnNames, columnValues } = generateInsertStatementComponents(columns);
+    
+    if (columnNames.length > 0) {
+      const insertSql = `INSERT INTO ${fullyQualifiedTableName} (${columnNames.join(', ')}) VALUES (${columnValues.join(', ')})`;
+      await client.query(insertSql);
+    } else {
+      await client.query(`INSERT INTO ${fullyQualifiedTableName} DEFAULT VALUES`);
+    }
+    
+    // Reset role will happen when we set the test user role later
+  } catch (error) {
+    // If seeding fails, we'll catch it during the actual operation test
+    // This might happen if the table has constraints we can't satisfy
+  }
+}
+
+/**
+ * Creates a fully qualified table name for SQL queries.
+ */
+function createFullyQualifiedTableName(schema: string, table: string): string {
+  return `"${schema}"."${table}"`;
 }
 
 /**
@@ -166,13 +215,6 @@ async function attemptDatabaseOperationWithRlsEvaluation(
   } catch (error: any) {
     return interpretDatabaseErrorAsProbeResult(error);
   }
-}
-
-/**
- * Creates a fully qualified table name for SQL queries.
- */
-function createFullyQualifiedTableName(schema: string, table: string): string {
-  return `"${schema}"."${table}"`;
 }
 
 /**
@@ -409,13 +451,21 @@ export async function executeStorageRlsPolicyProbeForOperation(
   
   try {
     await initializeTransactionalTestSession(client);
+    
+    // For SELECT/UPDATE/DELETE, seed a test object first
+    const testObjectPath = `test-${randomUUID()}.txt`;
+    if (operation !== 'INSERT') {
+      await seedTestStorageObjectAsSuperuser(client, bucketId, testObjectPath);
+    }
+    
     await configureSessionForUserContext(client, jwtClaims);
     await createSavepointForOperationTest(client);
     
     const result = await attemptStorageOperationWithRlsEvaluation(
       client, 
       bucketId, 
-      operation
+      operation,
+      testObjectPath
     );
     
     await rollbackToSavepointAfterTest(client);
@@ -430,22 +480,42 @@ export async function executeStorageRlsPolicyProbeForOperation(
 }
 
 /**
+ * Seeds a test storage object as superuser (bypassing RLS).
+ */
+async function seedTestStorageObjectAsSuperuser(
+  client: PoolClient,
+  bucketId: string,
+  objectPath: string
+): Promise<void> {
+  try {
+    await client.query('SET LOCAL ROLE postgres');
+    await client.query(`
+      INSERT INTO storage.objects (bucket_id, name, owner, path_tokens)
+      VALUES ($1, $2, '00000000-0000-0000-0000-000000000000', $3)
+    `, [bucketId, objectPath, [objectPath]]);
+  } catch (error) {
+    // Seeding failed, test will likely fail too
+  }
+}
+
+/**
  * Attempts a storage operation and evaluates the result based on RLS policies.
  */
 async function attemptStorageOperationWithRlsEvaluation(
   client: PoolClient,
   bucketId: string,
   operation: DatabaseOperation,
+  testObjectPath: string,
 ): Promise<ProbeResult> {
-  const testObjectPath = `test-${randomUUID()}.txt`;
-
   try {
     switch (operation) {
       case 'SELECT':
         return await executeStorageSelectOperationAndEvaluateResult(client, bucketId, testObjectPath);
       
       case 'INSERT':
-        return await executeStorageInsertOperationAndEvaluateResult(client, bucketId, testObjectPath);
+        // For INSERT, generate a new unique path to avoid conflicts
+        const insertPath = `test-${randomUUID()}.txt`;
+        return await executeStorageInsertOperationAndEvaluateResult(client, bucketId, insertPath);
       
       case 'UPDATE':
         return await executeStorageUpdateOperationAndEvaluateResult(client, bucketId, testObjectPath);
