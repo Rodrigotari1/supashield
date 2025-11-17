@@ -25,7 +25,7 @@ Set your Supabase database URL:
 export SUPASHIELD_DATABASE_URL="postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres"
 ```
 
-Get this from: **Supabase Dashboard → Settings → Database → Connection string → Session pooler**
+Get this from: **Supabase Dashboard → Settings → Database → Connection string → Transaction pooler**
 
 **Important:** Use the **Session pooler** connection string (port 6543), not the Direct connection. Session pooler is IPv4 compatible and works everywhere.
 
