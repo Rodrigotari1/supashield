@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import type { Pool } from 'pg';
 import {
   establishValidatedDatabaseConnection,
   createDatabaseConnectionConfig
@@ -78,7 +79,12 @@ export const testStorageCommand = new Command('test-storage')
   });
 
 
-async function runAllStorageBucketTests(pool: any, config: PolicyConfig, options: any, logger: any): Promise<TestResults> {
+async function runAllStorageBucketTests(
+  pool: Pool, 
+  config: PolicyConfig, 
+  options: { bucket?: string }, 
+  logger: Logger
+): Promise<TestResults> {
   const results: TestResults = {
     total_tests: 0,
     passed_tests: 0,
@@ -132,7 +138,8 @@ async function runAllStorageBucketTests(pool: any, config: PolicyConfig, options
           updateTestCounters(results, result);
           logger.raw(formatTestResult(result));
 
-        } catch (error: any) {
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           const result: TestResultDetail = {
             table_key: `storage.${bucketName}`,
             scenario_name: scenario.name,
@@ -140,13 +147,13 @@ async function runAllStorageBucketTests(pool: any, config: PolicyConfig, options
             expected,
             actual: 'ERROR',
             passed: false,
-            error_message: error.message,
+            error_message: errorMessage,
             execution_time_ms: performance.now() - startTime,
           };
 
           results.detailed_results.push(result);
           updateTestCounters(results, result);
-          logger.raw(`    ${operation}: ERROR - ${error.message}`);
+          logger.raw(`    ${operation}: ERROR - ${errorMessage}`);
         }
       }
     }
@@ -155,7 +162,7 @@ async function runAllStorageBucketTests(pool: any, config: PolicyConfig, options
   return results;
 }
 
-async function getBucketId(pool: any, bucketName: string): Promise<string | null> {
+async function getBucketId(pool: Pool, bucketName: string): Promise<string | null> {
   const client = await pool.connect();
   try {
     const result = await client.query('SELECT id FROM storage.buckets WHERE name = $1', [bucketName]);

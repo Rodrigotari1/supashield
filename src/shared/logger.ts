@@ -57,7 +57,12 @@ export function createLogger(verbose = false): Logger {
  * @param result - The detailed test result.
  * @returns A formatted string.
  */
-export function formatTestResult(result: any): string {
+export function formatTestResult(result: {
+  passed: boolean;
+  operation: string;
+  actual: string;
+  expected: string;
+}): string {
   const status = result.passed ? 'PASS' : 'FAIL';
   const statusColor = result.passed ? chalk.green(status) : chalk.red(status);
   const operation = result.operation.padEnd(6, ' ');
@@ -73,7 +78,13 @@ export function formatTestResult(result: any): string {
  * @param results - The aggregated test results.
  * @returns A formatted string for the summary.
  */
-export function formatSummary(results: any): string {
+export function formatSummary(results: {
+  total_tests: number;
+  passed_tests: number;
+  failed_tests: number;
+  error_tests: number;
+  execution_time_ms: number;
+}): string {
   const summary = [
     chalk.bold('\nTest Results:'),
     `  Total tests: ${results.total_tests}`,
@@ -96,7 +107,11 @@ export function formatSummary(results: any): string {
  * @param tables - An array of tables with their schema and policy count.
  * @returns A formatted string.
  */
-export function formatDiscoveredTables(tables: any[]): string {
+export function formatDiscoveredTables(tables: Array<{
+  schema: string;
+  name: string;
+  policies: any[];
+}>): string {
   const formattedTables = tables.map(table => {
     const tableKey = `${table.schema}.${table.name}`;
     return `  - ${tableKey} (${table.policies.length} policies)`;
@@ -110,7 +125,11 @@ export function formatDiscoveredTables(tables: any[]): string {
  * @param buckets - An array of storage buckets with their policy count.
  * @returns A formatted string.
  */
-export function formatDiscoveredBuckets(buckets: any[]): string {
+export function formatDiscoveredBuckets(buckets: Array<{
+  name: string;
+  public: boolean;
+  policies: any[];
+}>): string {
   const formattedBuckets = buckets.map(bucket => {
     const publicStatus = bucket.public ? 'public' : 'private';
     return `  - ${bucket.name} (${bucket.policies.length} policies, ${publicStatus})`;

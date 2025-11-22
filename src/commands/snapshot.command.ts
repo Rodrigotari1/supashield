@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import type { Pool } from 'pg';
 import { writeFile } from 'fs/promises';
 import {
   createDatabaseConnectionConfig,
@@ -22,7 +23,7 @@ export const snapshotCommand = new Command('snapshot')
     '--parallel <count>',
     'Number of parallel snapshots to run',
     (value) => parseInt(value, 10),
-    1
+    10
   )
   .option('--verbose', 'Enable verbose logging')
   .action(async (options) => {
@@ -44,7 +45,7 @@ export const snapshotCommand = new Command('snapshot')
       const pool = await establishValidatedDatabaseConnection(connectionConfig);
       logger.succeed('Connected to database.');
 
-      logger.start('📸 Creating policy snapshot...');
+      logger.start('Creating policy snapshot...');
       const snapshot = await createPolicySnapshot(
         pool,
         config,
@@ -62,7 +63,7 @@ export const snapshotCommand = new Command('snapshot')
   });
 
 async function createPolicySnapshot(
-  pool: any,
+  pool: Pool,
   config: PolicyConfig,
   parallelism: number,
   logger: Logger

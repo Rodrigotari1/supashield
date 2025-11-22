@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import type { Pool } from 'pg';
 import {
   establishValidatedDatabaseConnection,
   createDatabaseConnectionConfig
@@ -12,7 +13,8 @@ import type {
   PolicyConfig,
   TestResults,
   TestResultDetail,
-  DatabaseOperation
+  DatabaseOperation,
+  ProbeResult
 } from '../shared/types.js';
 import {
   SUPPORTED_DATABASE_OPERATIONS,
@@ -108,9 +110,15 @@ export const testCommand = new Command('test')
  * Executes all policy tests defined in the configuration.
  */
 async function executeAllPolicyTestsForConfiguration(
-  pool: any,
+  pool: Pool,
   config: PolicyConfig,
-  executionConfig: any,
+  executionConfig: {
+    target_table?: string;
+    include_system_schemas?: boolean;
+    operations_to_test: readonly DatabaseOperation[];
+    parallel_execution: boolean;
+    verbose_logging: boolean;
+  },
   logger: Logger
 ): Promise<TestResults> {
   const results: TestResults = {
@@ -163,11 +171,20 @@ async function executeAllPolicyTestsForConfiguration(
  * Executes a test scenario for all specified operations.
  */
 async function executeTestScenarioForAllOperations(
-  pool: any,
+  pool: Pool,
   schema: string,
   table: string,
-  scenario: any,
-  operations: DatabaseOperation[],
+  scenario: {
+    name: string;
+    jwt_claims: Record<string, any>;
+    expected: {
+      SELECT?: ProbeResult;
+      INSERT?: ProbeResult;
+      UPDATE?: ProbeResult;
+      DELETE?: ProbeResult;
+    };
+  },
+  operations: readonly DatabaseOperation[],
   logger: Logger
 ): Promise<TestResultDetail[]> {
   const results: TestResultDetail[] = [];
@@ -231,7 +248,11 @@ async function executeTestScenarioForAllOperations(
  */
 async function createConfigForRealUser(
   originalConfig: PolicyConfig,
-  userContext: any,
+  userContext: {
+    id: string;
+    email?: string;
+    role?: string;
+  },
   targetTable?: string
 ): Promise<PolicyConfig> {
   const realUserClaims = createJwtClaimsFromUser(userContext);

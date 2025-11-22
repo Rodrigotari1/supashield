@@ -6,6 +6,7 @@ import {
 import { CONSOLE_MESSAGES } from '../shared/constants.js';
 import { createLogger } from '../shared/logger.js';
 import type { Pool } from 'pg';
+import type { PoolClient } from 'pg';
 
 export const auditCommand = new Command('audit')
   .description('Audit database for common RLS security vulnerabilities')
@@ -89,7 +90,8 @@ async function runSecurityAudit(pool: Pool, includeSystemSchemas: boolean): Prom
   return issues;
 }
 
-async function fetchAllTables(client: any, includeSystemSchemas: boolean) {
+async function fetchAllTables(client: PoolClient, includeSystemSchemas: boolean)
+{
   const schemaCondition = includeSystemSchemas 
     ? "nsp.nspname NOT IN ('information_schema', 'pg_catalog', 'pg_toast')"
     : "nsp.nspname = 'public'";
@@ -110,7 +112,11 @@ async function fetchAllTables(client: any, includeSystemSchemas: boolean) {
   return rows;
 }
 
-async function checkForDisabledRls(client: any, tables: any[], issues: AuditResults) {
+async function checkForDisabledRls(
+  client: PoolClient, 
+  tables: Array<{schema: string, table_name: string, rls_enabled: boolean}>, 
+  issues: AuditResults
+) {
   for (const table of tables) {
     if (!table.rls_enabled) {
       const fullTableName = `${table.schema}.${table.table_name}`;
@@ -125,7 +131,11 @@ async function checkForDisabledRls(client: any, tables: any[], issues: AuditResu
   }
 }
 
-async function checkForMissingPolicies(client: any, tables: any[], issues: AuditResults) {
+async function checkForMissingPolicies(
+  client: PoolClient, 
+  tables: Array<{schema: string, table_name: string, rls_enabled: boolean, rls_forced?: boolean}>, 
+  issues: AuditResults
+) {
   for (const table of tables) {
     if (!table.rls_enabled) continue;
 
@@ -150,7 +160,11 @@ async function checkForMissingPolicies(client: any, tables: any[], issues: Audit
   }
 }
 
-async function checkForUnsafeGrants(client: any, tables: any[], issues: AuditResults) {
+async function checkForUnsafeGrants(
+  client: PoolClient, 
+  tables: Array<{schema: string, table_name: string, rls_enabled: boolean}>, 
+  issues: AuditResults
+) {
   const { rows: grants } = await client.query(`
     SELECT DISTINCT
       p.table_schema as schema,
@@ -165,7 +179,7 @@ async function checkForUnsafeGrants(client: any, tables: any[], issues: AuditRes
   `);
 
   for (const grant of grants) {
-    const tableWithoutRls = tables.find((t: any) => 
+    const tableWithoutRls = tables.find(t => 
       t.schema === grant.schema && t.table_name === grant.table_name && !t.rls_enabled
     );
 
@@ -182,7 +196,11 @@ async function checkForUnsafeGrants(client: any, tables: any[], issues: AuditRes
   }
 }
 
-async function checkStorageBucketSecurity(client: any, tables: any[], issues: AuditResults) {
+async function checkStorageBucketSecurity(
+  client: PoolClient, 
+  tables: Array<{schema: string, table_name: string, rls_enabled: boolean}>, 
+  issues: AuditResults
+) {
   try {
     const { rows: buckets } = await client.query(`
       SELECT id, name, public FROM storage.buckets;
@@ -200,7 +218,7 @@ async function checkStorageBucketSecurity(client: any, tables: any[], issues: Au
       }
     }
 
-    const storageObjectsRls = tables.find((t: any) => 
+    const storageObjectsRls = tables.find(t => 
       t.schema === 'storage' && t.table_name === 'objects'
     );
     

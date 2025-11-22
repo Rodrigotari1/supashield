@@ -212,7 +212,7 @@ async function attemptDatabaseOperationWithRlsEvaluation(
       default:
         return 'ERROR';
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return interpretDatabaseErrorAsProbeResult(error);
   }
 }
@@ -304,7 +304,7 @@ async function introspectTableColumnsForInsertOperation(
     ORDER BY ordinal_position
   `, [schema, table]);
 
-  return columns.map((col: any): ColumnIntrospectionResult => ({
+  return columns.map((col): ColumnIntrospectionResult => ({
     column_name: col.column_name,
     data_type: col.data_type,
     is_nullable: col.is_nullable === 'YES',
@@ -366,7 +366,7 @@ function generateTestValueForColumn(column: ColumnIntrospectionResult): string {
 /**
  * Interprets database errors and converts them to appropriate ProbeResult values.
  */
-function interpretDatabaseErrorAsProbeResult(error: any): ProbeResult {
+function interpretDatabaseErrorAsProbeResult(error: unknown): ProbeResult {
   if (isRlsPolicyViolationError(error)) {
     return 'DENY';
   }
@@ -381,17 +381,21 @@ function interpretDatabaseErrorAsProbeResult(error: any): ProbeResult {
 /**
  * Determines if an error is an RLS policy violation.
  */
-function isRlsPolicyViolationError(error: any): boolean {
-  return error.code === SQL_ERROR_CODES.PERMISSION_DENIED || 
-         error.message?.includes('permission denied') || 
-         error.message?.includes('policy');
+function isRlsPolicyViolationError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const err = error as { code?: string; message?: string };
+  return err.code === SQL_ERROR_CODES.PERMISSION_DENIED || 
+         (err.message?.includes('permission denied') ?? false) || 
+         (err.message?.includes('policy') ?? false);
 }
 
 /**
  * Determines if an error is a duplicate key constraint violation.
  */
-function isDuplicateKeyError(error: any): boolean {
-  return error.code === SQL_ERROR_CODES.DUPLICATE_KEY;
+function isDuplicateKeyError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const err = error as { code?: string };
+  return err.code === SQL_ERROR_CODES.DUPLICATE_KEY;
 }
 
 /**
@@ -526,7 +530,7 @@ async function attemptStorageOperationWithRlsEvaluation(
       default:
         return 'ERROR';
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return interpretDatabaseErrorAsProbeResult(error);
   }
 }

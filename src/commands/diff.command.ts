@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import type { Pool } from 'pg';
 import {
   createDatabaseConnectionConfig,
   establishValidatedDatabaseConnection,
@@ -25,7 +26,7 @@ export const diffCommand = new Command('diff')
     '--parallel <count>',
     'Number of parallel snapshots to run',
     (value) => parseInt(value, 10),
-    1
+    10
   )
   .option('--verbose', 'Enable verbose logging')
   .action(async (options) => {
@@ -53,7 +54,7 @@ export const diffCommand = new Command('diff')
       const pool = await establishValidatedDatabaseConnection(connectionConfig);
       logger.succeed('Connected to database.');
 
-      logger.start('📸 Creating live policy snapshot for comparison...');
+      logger.start('Creating live policy snapshot for comparison...');
       const currentSnapshot = await createPolicySnapshot(
         pool,
         config,
@@ -73,7 +74,7 @@ export const diffCommand = new Command('diff')
   });
 
 async function createPolicySnapshot(
-  pool: any,
+  pool: Pool,
   config: PolicyConfig,
   parallelism: number,
   logger: Logger

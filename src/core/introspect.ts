@@ -18,9 +18,9 @@ export async function introspectSchema(pool: Pool, options: { includeSystemSchem
 }
 
 /**
- * Discovers all tables in the database that have Row Level Security enabled.
+ * Discovers all tables in the database, regardless of RLS status.
  */
-async function discoverTablesWithRowLevelSecurityEnabled(client: PoolClient, includeSystemSchemas = false): Promise<Array<{schema: string, name: string}>> {
+export async function discoverAllTables(client: PoolClient, includeSystemSchemas = false): Promise<Array<{schema: string, name: string, rls_enabled: boolean, rls_forced: boolean}>> {
   const schemaCondition = includeSystemSchemas 
     ? createExcludedSchemasNspCondition() 
     : "nsp.nspname = 'public'";
@@ -39,16 +39,24 @@ async function discoverTablesWithRowLevelSecurityEnabled(client: PoolClient, inc
   `;
 
   const { rows: allTables } = await client.query(tablesQuery);
+  return allTables;
+}
+
+/**
+ * Discovers all tables in the database that have Row Level Security enabled.
+ */
+async function discoverTablesWithRowLevelSecurityEnabled(client: PoolClient, includeSystemSchemas = false): Promise<Array<{schema: string, name: string}>> {
+  const allTables = await discoverAllTables(client, includeSystemSchemas);
   
   // Separate tables with RLS enabled and disabled
-  const rlsEnabledTables = allTables.filter((t: any) => t.rls_enabled);
-  const rlsDisabledTables = allTables.filter((t: any) => !t.rls_enabled);
+  const rlsEnabledTables = allTables.filter(t => t.rls_enabled);
+  const rlsDisabledTables = allTables.filter(t => !t.rls_enabled);
   
   // Log critical warning for tables without RLS
   if (rlsDisabledTables.length > 0) {
     console.log('\nCRITICAL SECURITY WARNING');
     console.log('The following tables have RLS DISABLED and may expose ALL data:');
-    rlsDisabledTables.forEach((t: any) => {
+    rlsDisabledTables.forEach(t => {
       console.log(`  ${t.schema}.${t.name}`);
     });
     console.log('\nTo enable RLS on a table, run:');
@@ -223,7 +231,13 @@ function createStoragePolicyIntrospectionQuery(): string {
 /**
  * Transforms raw policy data from PostgreSQL into structured PolicyInfo objects.
  */
-function transformRawPolicyDataToStructured(rawPolicy: any): PolicyInfo {
+function transformRawPolicyDataToStructured(rawPolicy: {
+  name: string;
+  command: string;
+  role_oids?: string[];
+  using_expression?: string;
+  with_check_expression?: string;
+}): PolicyInfo {
   return {
     name: rawPolicy.name,
     command: rawPolicy.command as 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE',
