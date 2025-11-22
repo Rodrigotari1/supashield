@@ -17,3 +17,4 @@ src/utils/simulate.ts
 .idea/
 .vscode/
 *.iml
+arch.md

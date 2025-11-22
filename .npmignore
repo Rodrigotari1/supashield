@@ -1,0 +1,38 @@
+# Source files (bundled into dist/)
+src/
+
+# Dev files
+tests/
+*.test.ts
+*.test.js
+tsconfig.json
+vitest.config.ts
+
+# Landing page / website
+landing/
+
+# Local dev config
+supabase/
+tests.sql
+arch.md
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Git
+.git/
+.gitignore
+
+# Docs (keep README.md and LICENSE)
+design.md
+
+# Build artifacts (we only want dist/)
+coverage/
+.dist/
+
+# Environment
+.env*
+.npmignore
+

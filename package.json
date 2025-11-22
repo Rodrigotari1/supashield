@@ -3,6 +3,10 @@
   "version": "0.2.0",
   "type": "module",
   "license": "MIT",
+  "files": [
+    "dist/",
+    "README.md"
+  ],
   "bin": {
     "supashield": "dist/cli.js"
   },
