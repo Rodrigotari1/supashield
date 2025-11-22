@@ -5,6 +5,9 @@ import { testCommand } from './commands/test.command.js';
 import { testStorageCommand } from './commands/test-storage.command.js';
 import { exportPgtapCommand } from './commands/export-pgtap.command.js';
 import { auditCommand } from './commands/audit.command.js';
+import { coverageCommand } from './commands/coverage.command.js';
+import { snapshotCommand } from './commands/snapshot.command.js';
+import { diffCommand } from './commands/diff.command.js';
 
 const program = new Command();
 
@@ -39,7 +42,7 @@ program
         console.log('No users found in auth.users table');
       } else {
         console.log('Found users:');
-        rows.forEach((user: any) => {
+        rows.forEach((user: { email: string; id: string; created_at: string }) => {
           console.log(`  - ${user.email} (${user.id})`);
         });
       }
@@ -50,6 +53,9 @@ program
   });
 
 program.addCommand(auditCommand);
+program.addCommand(coverageCommand);
+program.addCommand(snapshotCommand);
+program.addCommand(diffCommand);
 program.addCommand(initCommand);
 program.addCommand(testCommand);
 program.addCommand(testStorageCommand);
