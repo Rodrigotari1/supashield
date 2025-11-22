@@ -8,6 +8,8 @@ Catch Supabase RLS security vulnerabilities before they reach production.
 
 ## Features
 - Security vulnerability detection
+- RLS coverage reporting (see what each role can access)
+- Policy change detection (snapshot & diff)
 - Smart schema discovery  
 - RLS policy testing (tables + storage buckets)
 - Real user context testing
@@ -34,11 +36,14 @@ Get this from: **Supabase Dashboard → Settings → Database → Connection str
 ## Quick Start
 ```bash
 supashield audit                       # scan for common RLS security issues
+supashield coverage                    # generate RLS coverage report
 supashield init                        # discover tables and storage buckets
 supashield test                        # test all table RLS policies
 supashield test-storage                # test storage bucket RLS policies
 supashield test --table public.users   # test specific table
 supashield test --as-user admin@company.com  # test with real user
+supashield snapshot                    # save current RLS policy state
+supashield diff                        # compare current state vs snapshot
 supashield users                       # list users from auth.users for testing
 supashield export-pgtap -o tests.sql   # export tests to pgTap format
 ```
@@ -102,7 +107,6 @@ storage_buckets:
 ## Safety
 - All operations use transactions and rollbacks
 - No data is ever persisted during testing
-- Works safely with production databases
 
 ## Feature Requests
 
