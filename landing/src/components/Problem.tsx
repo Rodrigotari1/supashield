@@ -61,13 +61,6 @@ export default function Problem() {
           ))}
         </div>
 
-        <div className="mt-12 text-center">
-          <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-6 max-w-2xl mx-auto">
-            <p className="text-lg text-white">
-              <span className="font-bold">35%</span> of all cyber incidents are caused by security misconfigurations
-            </p>
-          </div>
-        </div>
       </div>
     </section>
   )

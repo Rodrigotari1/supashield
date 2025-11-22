@@ -13,7 +13,7 @@ export default function Footer() {
                 <span className="text-[#3ECF8E]">Supa</span>
                 <span className="text-white">Shield</span>
               </h3>
-              <span className="bg-[#3ECF8E] text-black px-2 py-1 rounded text-xs font-medium">v0.1.0</span>
+              <span className="bg-[#3ECF8E] text-black px-2 py-1 rounded text-xs font-medium">v0.2.1</span>
             </div>
             <p className="text-gray-400 max-w-md">
               Test your Supabase RLS policies automatically.

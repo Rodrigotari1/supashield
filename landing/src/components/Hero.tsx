@@ -24,7 +24,7 @@ export default function Hero() {
             <span className="text-white">Shield</span>
           </h1>
           <div className="flex justify-start items-center gap-2 text-sm text-gray-400">
-            <span className="bg-[#3E8965] text-white px-2 py-1 rounded text-xs font-medium">v0.1.0</span>
+            <span className="bg-[#3E8965] text-white px-2 py-1 rounded text-xs font-medium">v0.2.1</span>
             <span>•</span>
             <span>MIT License</span>
           </div>

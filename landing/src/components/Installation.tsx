@@ -12,12 +12,24 @@ const installMethods = [
 
 const quickStartCommands = [
   {
+    command: 'supashield audit',
+    description: 'Scan for common RLS security issues'
+  },
+  {
+    command: 'supashield coverage',
+    description: 'Generate RLS coverage report'
+  },
+  {
     command: 'supashield init',
-    description: 'Discover tables and generate tests'
+    description: 'Discover tables and storage buckets'
   },
   {
     command: 'supashield test',
-    description: 'Test all RLS policies'
+    description: 'Test all table RLS policies'
+  },
+  {
+    command: 'supashield test-storage',
+    description: 'Test storage bucket RLS policies'
   },
   {
     command: 'supashield test --table public.users',
@@ -25,11 +37,23 @@ const quickStartCommands = [
   },
   {
     command: 'supashield test --as-user admin@company.com',
-    description: 'Test with real user context'
+    description: 'Test with real user'
+  },
+  {
+    command: 'supashield snapshot',
+    description: 'Save current RLS policy state'
+  },
+  {
+    command: 'supashield diff',
+    description: 'Compare current state vs snapshot'
   },
   {
     command: 'supashield users',
     description: 'List users from auth.users for testing'
+  },
+  {
+    command: 'supashield export-pgtap -o tests.sql',
+    description: 'Export tests to pgTap format'
   }
 ]
 
