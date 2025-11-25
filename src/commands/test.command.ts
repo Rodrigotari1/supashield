@@ -1,9 +1,5 @@
 import { Command } from 'commander';
 import type { Pool } from 'pg';
-import {
-  establishValidatedDatabaseConnection,
-  createDatabaseConnectionConfig
-} from '../core/db.js';
 import { 
   executeRlsPolicyProbeForOperation,
   fetchRealUserContext,
@@ -16,21 +12,10 @@ import type {
   DatabaseOperation,
   ProbeResult
 } from '../shared/types.js';
-import {
-  SUPPORTED_DATABASE_OPERATIONS,
-  CONSOLE_MESSAGES,
-} from '../shared/constants.js';
-import {
-  createLogger,
-  formatTestResult,
-  formatSummary,
-  Logger,
-} from '../shared/logger.js';
-import {
-  updateTestCounters,
-  exitWithTestResults,
-  loadPolicyConfig,
-} from '../shared/test-utils.js';
+import { SUPPORTED_DATABASE_OPERATIONS, CONSOLE_MESSAGES } from '../shared/constants.js';
+import { formatTestResult, formatSummary, type Logger } from '../shared/logger.js';
+import { updateTestCounters, exitWithTestResults, loadPolicyConfig } from '../shared/test-utils.js';
+import { withDatabaseConnection } from '../shared/command-utils.js';
 
 export const testCommand = new Command('test')
   .description('Test RLS policies for data leaks and access violations')
@@ -40,27 +25,10 @@ export const testCommand = new Command('test')
   .option('--all-schemas', 'Include system tables (auth, storage, etc.)')
   .option('--verbose', 'Enable verbose logging')
   .action(async (options) => {
-    const logger = createLogger(options.verbose);
-    const dbUrl = options.url || process.env.SUPASHIELD_DATABASE_URL || process.env.DATABASE_URL;
+    const startTime = performance.now();
+    let config = await loadPolicyConfig();
 
-    if (!dbUrl) {
-      logger.error('Database URL is required. Use --url or set SUPASHIELD_DATABASE_URL (or DATABASE_URL) env var.');
-      process.exit(1);
-    }
-
-    try {
-      const startTime = performance.now();
-
-      logger.start(CONSOLE_MESSAGES.LOADING_CONFIG);
-      let config = await loadPolicyConfig();
-      logger.succeed('Policy configuration loaded.');
-
-      logger.start(CONSOLE_MESSAGES.CONNECTING);
-      const connectionConfig = createDatabaseConnectionConfig(dbUrl);
-      const pool = await establishValidatedDatabaseConnection(connectionConfig);
-      logger.succeed('Connected to database.');
-
-      // Handle real user testing
+    await withDatabaseConnection(options, async ({ pool, logger }) => {
       if (options.asUser) {
         logger.start(`Fetching user context for: ${options.asUser}`);
         const userContext = await fetchRealUserContext(pool, options.asUser);
@@ -71,8 +39,6 @@ export const testCommand = new Command('test')
         }
         
         logger.succeed(`Testing as: ${userContext.email} (${userContext.id})`);
-        
-        // Override config to test with real user
         config = await createConfigForRealUser(config, userContext, options.table);
       }
 
@@ -91,18 +57,11 @@ export const testCommand = new Command('test')
       );
       logger.succeed('All tests complete.');
 
-      await pool.end();
-
-      const endTime = performance.now();
-      testResults.execution_time_ms = endTime - startTime;
+      testResults.execution_time_ms = performance.now() - startTime;
 
       logger.raw(formatSummary(testResults));
       exitWithTestResults(testResults, logger);
-
-    } catch (error) {
-      logger.error('An unexpected error occurred during testing.', error);
-      process.exit(1);
-    }
+    });
   });
 
 

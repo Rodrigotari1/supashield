@@ -1,20 +1,13 @@
 import { Command } from 'commander';
 import type { Pool } from 'pg';
 import { writeFile } from 'fs/promises';
-import {
-  createDatabaseConnectionConfig,
-  establishValidatedDatabaseConnection,
-} from '../core/db.js';
 import { executeRlsPolicyProbeForOperation } from '../core/simulate.js';
-import {
-  CONSOLE_MESSAGES,
-  FILE_PATHS,
-  SUPPORTED_DATABASE_OPERATIONS,
-} from '../shared/constants.js';
-import { createLogger, Logger } from '../shared/logger.js';
+import { FILE_PATHS, SUPPORTED_DATABASE_OPERATIONS } from '../shared/constants.js';
+import type { Logger } from '../shared/logger.js';
 import type { PolicyConfig, PolicySnapshot } from '../shared/types.js';
 import { loadPolicyConfigurationFromFile } from '../shared/config.js';
 import { executePromisesInParallel } from '../shared/parallel.js';
+import { withDatabaseConnection } from '../shared/command-utils.js';
 
 export const snapshotCommand = new Command('snapshot')
   .description('Take a snapshot of the current policy behavior')
@@ -27,39 +20,14 @@ export const snapshotCommand = new Command('snapshot')
   )
   .option('--verbose', 'Enable verbose logging')
   .action(async (options) => {
-    const logger = createLogger(options.verbose);
-    const dbUrl = options.url || process.env.SUPASHIELD_DATABASE_URL || process.env.DATABASE_URL;
+    const config = await loadPolicyConfigurationFromFile();
 
-    if (!dbUrl) {
-      logger.error('Database URL is required. Use --url or set SUPASHIELD_DATABASE_URL env var.');
-      process.exit(1);
-    }
-
-    try {
-      logger.start(CONSOLE_MESSAGES.LOADING_CONFIG);
-      const config = await loadPolicyConfigurationFromFile();
-      logger.succeed('Policy configuration loaded.');
-
-      logger.start(CONSOLE_MESSAGES.CONNECTING);
-      const connectionConfig = createDatabaseConnectionConfig(dbUrl);
-      const pool = await establishValidatedDatabaseConnection(connectionConfig);
-      logger.succeed('Connected to database.');
-
+    await withDatabaseConnection(options, async ({ pool, logger }) => {
       logger.start('Creating policy snapshot...');
-      const snapshot = await createPolicySnapshot(
-        pool,
-        config,
-        options.parallel,
-        logger
-      );
+      const snapshot = await createPolicySnapshot(pool, config, options.parallel, logger);
       await writePolicySnapshotToFile(snapshot);
       logger.succeed(`Snapshot saved to ${FILE_PATHS.SNAPSHOT_FILE}`);
-
-      await pool.end();
-    } catch (error) {
-      logger.error('An unexpected error occurred during snapshot creation.', error);
-      process.exit(1);
-    }
+    });
   });
 
 async function createPolicySnapshot(

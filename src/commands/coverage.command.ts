@@ -1,43 +1,22 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { createLogger } from '../shared/logger.js';
-import { createDatabaseConnectionConfig, establishValidatedDatabaseConnection } from '../core/db.js';
+import { withDatabaseConnection } from '../shared/command-utils.js';
 import { generateCoverageReport, type CoverageReport, type RoleAccess } from '../core/coverage.js';
-import { text } from 'stream/consumers';
 
 export const coverageCommand = new Command('coverage')
   .description('Generate a coverage report of RLS policies')
   .option('-u, --url <url>', 'Database connection URL')
   .option('--all-schemas', 'Include system tables')
   .action(async (options) => {
-    const logger = createLogger(false); // Verbose false by default for report
-    const dbUrl = options.url || process.env.SUPASHIELD_DATABASE_URL || process.env.DATABASE_URL;
-
-    if (!dbUrl) {
-      logger.error('Database URL is required. Use --url or set SUPASHIELD_DATABASE_URL env var.');
-      process.exit(1);
-    }
-
-    try {
-      logger.start('Connecting to database...');
-      const connectionConfig = createDatabaseConnectionConfig(dbUrl);
-      const pool = await establishValidatedDatabaseConnection(connectionConfig);
-      logger.succeed('Connected.');
-
+    await withDatabaseConnection(options, async ({ pool, logger }) => {
       logger.start('Generating coverage report... (this may take a moment)');
       const report = await generateCoverageReport(pool, {
         includeSystemSchemas: options.allSchemas
       });
       logger.succeed('Report generated.');
 
-      await pool.end();
-
       printCoverageReport(report);
-
-    } catch (error) {
-      logger.error('Failed to generate coverage report.', error);
-      process.exit(1);
-    }
+    });
   });
 
 function printCoverageReport(report: CoverageReport) {

@@ -1,12 +1,6 @@
 import { Command } from 'commander';
-import {
-  establishValidatedDatabaseConnection,
-  createDatabaseConnectionConfig
-} from '../core/db.js';
-import { CONSOLE_MESSAGES } from '../shared/constants.js';
-import { createLogger } from '../shared/logger.js';
-import type { Pool } from 'pg';
-import type { PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
+import { withDatabaseConnection } from '../shared/command-utils.js';
 
 export const auditCommand = new Command('audit')
   .description('Audit database for common RLS security vulnerabilities')
@@ -14,36 +8,17 @@ export const auditCommand = new Command('audit')
   .option('--all-schemas', 'Include system tables (auth, storage, etc.)')
   .option('--verbose', 'Enable verbose logging')
   .action(async (options) => {
-    const logger = createLogger(options.verbose);
-    const dbUrl = options.url || process.env.SUPASHIELD_DATABASE_URL || process.env.DATABASE_URL;
-
-    if (!dbUrl) {
-      logger.error('Database URL is required. Use --url or set SUPASHIELD_DATABASE_URL (or DATABASE_URL) env var.');
-      process.exit(1);
-    }
-
-    try {
-      logger.start(CONSOLE_MESSAGES.CONNECTING);
-      const connectionConfig = createDatabaseConnectionConfig(dbUrl);
-      const pool = await establishValidatedDatabaseConnection(connectionConfig);
-      logger.succeed('Connected to database.');
-
+    await withDatabaseConnection(options, async ({ pool, logger }) => {
       logger.start('Running security audit...');
       const issues = await runSecurityAudit(pool, options.allSchemas || false);
       logger.succeed('Security audit complete.');
-
-      await pool.end();
 
       displayAuditResults(issues);
       
       if (issues.totalIssues > 0) {
         process.exit(1);
       }
-
-    } catch (error) {
-      logger.error('An unexpected error occurred during audit.', error);
-      process.exit(1);
-    }
+    });
   });
 
 interface SecurityIssue {
