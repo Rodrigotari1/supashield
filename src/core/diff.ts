@@ -1,7 +1,7 @@
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
-import { FILE_PATHS } from './constants.js';
-import type { DatabaseOperation, PolicySnapshot } from './types.js';
+import { FILE_PATHS } from '../shared/constants.js';
+import type { DatabaseOperation, PolicySnapshot } from '../shared/types.js';
 
 export interface SnapshotComparisonResult {
   isIdentical: boolean;
@@ -56,4 +56,5 @@ export function compareSnapshots(
   }
 
   return result;
-} 
+}
+
