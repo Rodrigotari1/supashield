@@ -1,6 +1,7 @@
-import type { TestResults, TestResultDetail } from './types.js';
+import type { TestResults, TestResultDetail, PolicyConfig } from './types.js';
 import type { Logger } from './logger.js';
 import { CONSOLE_MESSAGES } from './constants.js';
+import { loadPolicyConfigurationFromFile } from './config.js';
 
 export function updateTestCounters(
   results: TestResults, 
@@ -31,12 +32,7 @@ export function exitWithTestResults(
   }
 }
 
-export async function loadPolicyConfig(): Promise<any> {
-  const { readFile } = await import('fs/promises');
-  const { parse } = await import('yaml');
-  const { FILE_PATHS } = await import('./constants.js');
-  
-  const yamlContent = await readFile(FILE_PATHS.POLICY_CONFIG_FILE, 'utf-8');
-  return parse(yamlContent);
+export async function loadPolicyConfig(): Promise<PolicyConfig> {
+  return loadPolicyConfigurationFromFile();
 }
 
