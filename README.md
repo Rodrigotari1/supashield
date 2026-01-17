@@ -2,6 +2,9 @@
 
 [![npm version](https://img.shields.io/npm/v/supashield)](https://www.npmjs.com/package/supashield) [![Node](https://img.shields.io/node/v/supashield)](https://nodejs.org/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Website](https://img.shields.io/badge/website-supashield.app-green)](https://supashield.app/)
 
+<git-widget data-projectid="Rodrigotari1/supashield" data-width="100%" data-height="500px"></git-widget>
+<script src="https://unpkg.com/git-widget@1.0.0/dist/card.component.mjs" type="module"></script>
+
 🔗 **[Visit the website](https://supashield.app/)** for full documentation and examples.
 
 Catch Supabase RLS security vulnerabilities before they reach production.
