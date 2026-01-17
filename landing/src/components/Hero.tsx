@@ -2,7 +2,7 @@ import Link from 'next/link'
 
 export default function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden pb-16">
+    <section className="relative min-h-screen flex items-center overflow-hidden pb-12 sm:pb-16">
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#3E8965]/10 via-black to-black" />
       
@@ -14,12 +14,12 @@ export default function Hero() {
         }}
       />
 
-      <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-8 xl:px-12 grid lg:grid-cols-2 gap-12 items-center">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 md:px-8 xl:px-12 grid lg:grid-cols-2 gap-12 items-center">
         {/* Left side - Content */}
         <div className="text-left">
         {/* Logo/Brand */}
-        <div className="mb-8">
-          <h1 className="text-5xl md:text-7xl font-bold mb-4">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold mb-4">
             <span className="text-[#3E8965]">Supa</span>
             <span className="text-white">Shield</span>
           </h1>
@@ -31,14 +31,14 @@ export default function Hero() {
         </div>
 
         {/* Main headline */}
-        <div className="mb-8">
-          <h2 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
+        <div className="mb-6 sm:mb-8">
+          <h2 className="text-3xl sm:text-4xl md:text-6xl font-bold mb-4 sm:mb-6 leading-tight">
             Test your Supabase
             <br />
             <span className="text-[#3E8965]">RLS policies</span>
           </h2>
-          
-          <p className="text-xl md:text-2xl text-gray-300 max-w-3xl leading-relaxed">
+
+          <p className="text-lg sm:text-xl md:text-2xl text-gray-300 max-w-3xl leading-relaxed">
             Catch Supabase RLS security vulnerabilities before they reach production.
             <br />
             Find permission bugs before your users do.
@@ -46,32 +46,32 @@ export default function Hero() {
         </div>
 
         {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row items-start justify-start gap-4 mb-12">
-          <Link 
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-start justify-start gap-3 sm:gap-4 mb-8 sm:mb-12">
+          <Link
             href="#installation"
-            className="bg-[#3E8965] hover:bg-[#3E8965]/90 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-300 min-w-[200px] inline-block text-center hover:scale-105 hover:shadow-lg hover:shadow-[#3E8965]/20"
+            className="bg-[#3E8965] hover:bg-[#3E8965]/90 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg font-semibold text-base sm:text-lg transition-all duration-300 w-full sm:w-auto sm:min-w-[200px] inline-block text-center hover:scale-105 hover:shadow-lg hover:shadow-[#3E8965]/20"
           >
             Find Your Bugs Now
           </Link>
-          <Link 
-            href="https://github.com/Rodrigotari1/supa-shield" 
+          <Link
+            href="https://github.com/Rodrigotari1/supa-shield"
             target="_blank"
             rel="noopener noreferrer"
-            className="border border-gray-600 hover:border-gray-400 text-gray-300 hover:text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-300 min-w-[200px] inline-block text-center hover:scale-105 hover:bg-gray-800/20"
+            className="border border-gray-600 hover:border-gray-400 text-gray-300 hover:text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg font-semibold text-base sm:text-lg transition-all duration-300 w-full sm:w-auto sm:min-w-[200px] inline-block text-center hover:scale-105 hover:bg-gray-800/20"
           >
             View on GitHub
           </Link>
         </div>
 
         {/* Quick install command */}
-        <div className="bg-gray-900/50 backdrop-blur border border-gray-800 rounded-lg p-6 max-w-2xl hover:border-gray-700 transition-all duration-300 hover:bg-gray-900/60">
+        <div className="bg-gray-900/50 backdrop-blur border border-gray-800 rounded-lg p-4 sm:p-6 max-w-2xl hover:border-gray-700 transition-all duration-300 hover:bg-gray-900/60">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-400">Quick Install</span>
-            <button className="text-gray-400 hover:text-white text-sm transition-colors duration-200 hover:scale-110">
+            <span className="text-xs sm:text-sm text-gray-400">Quick Install</span>
+            <button className="text-gray-400 hover:text-white text-xs sm:text-sm transition-colors duration-200 hover:scale-110">
               Copy
             </button>
           </div>
-          <code className="text-[#3E8965] text-lg font-mono">
+          <code className="text-[#3E8965] text-sm sm:text-base md:text-lg font-mono break-all">
             npm install -g supashield
           </code>
         </div>

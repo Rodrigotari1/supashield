@@ -3,13 +3,13 @@ import Image from 'next/image'
 
 export default function Footer() {
   return (
-    <footer className="py-16 border-t border-gray-800">
-      <div className="max-w-6xl mx-auto px-6 md:px-8 xl:px-12">
+    <footer className="py-12 sm:py-16 border-t border-gray-800">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 xl:px-12">
         <div className="grid md:grid-cols-3 gap-8 mb-8">
           {/* Brand */}
           <div className="md:col-span-2">
             <div className="flex items-center gap-2 mb-4">
-              <h3 className="text-2xl font-bold">
+              <h3 className="text-xl sm:text-2xl font-bold">
                 <span className="text-[#3ECF8E]">Supa</span>
                 <span className="text-white">Shield</span>
               </h3>

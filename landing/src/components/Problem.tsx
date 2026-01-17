@@ -23,7 +23,7 @@ export default function Problem() {
   ]
 
   return (
-    <section className="relative py-12 md:py-16 px-4 overflow-hidden bg-gray-900/20">
+    <section className="relative py-12 sm:py-16 md:py-20 px-4 overflow-hidden bg-gray-900/20">
       {/* Grid pattern overlay */}
       <div 
         className="absolute inset-0 opacity-30"
@@ -32,23 +32,23 @@ export default function Problem() {
         }}
       />
       
-      <div className="relative z-10 max-w-6xl mx-auto px-6 md:px-8 xl:px-12">
+      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 md:px-8 xl:px-12">
         <div className="text-center mb-8 md:mb-12">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-6">
             RLS Testing is Broken
           </h2>
-          <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+          <p className="text-lg sm:text-xl text-gray-300 max-w-3xl mx-auto">
             Deployed with confidence, only to find users can see each other&apos;s data.
           </p>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 md:gap-4">
           {problems.map((problem, index) => (
-            <div 
+            <div
               key={index}
-              className="bg-gray-900/30 backdrop-blur border border-gray-800 rounded-lg p-6 hover:border-gray-700 hover:bg-gray-900/40 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-[#3E8965]/10"
+              className="bg-gray-900/30 backdrop-blur border border-gray-800 rounded-lg p-4 sm:p-6 hover:border-gray-700 hover:bg-gray-900/40 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-[#3E8965]/10"
             >
-              <h3 className="text-xl font-semibold mb-3 text-white">
+              <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3 text-white">
                 {problem.title}
               </h3>
               <p className="text-gray-400 leading-relaxed mb-3">

@@ -1,6 +1,6 @@
 export default function WhySupaShield() {
   return (
-    <section className="relative py-12 md:py-16 px-4 bg-gray-900/20 overflow-hidden">
+    <section className="relative py-12 sm:py-16 md:py-20 px-4 bg-gray-900/20 overflow-hidden">
       {/* Grid pattern overlay */}
       <div 
         className="absolute inset-0 opacity-30"
@@ -9,15 +9,15 @@ export default function WhySupaShield() {
         }}
       />
       
-      <div className="relative z-10 max-w-6xl mx-auto px-6 md:px-8 xl:px-12">
+      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 md:px-8 xl:px-12">
         <div className="text-center mb-6 md:mb-10">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-6">
             Example output
           </h2>
         </div>
 
         <div className="max-w-4xl mx-auto">
-          <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 font-mono text-sm overflow-x-auto hover:border-gray-700 transition-all duration-300 hover:shadow-lg hover:shadow-[#3E8965]/5 hover:bg-gray-900/90">
+          <div className="bg-gray-900 border border-gray-800 rounded-lg p-3 sm:p-4 md:p-6 font-mono text-xs sm:text-sm overflow-x-auto hover:border-gray-700 transition-all duration-300 hover:shadow-lg hover:shadow-[#3E8965]/5 hover:bg-gray-900/90">
             <div className="text-gray-400 mb-2">$ supashield test</div>
             <div className="space-y-1">
               <div className="text-white">Testing public.users:</div>

@@ -72,7 +72,7 @@ export default function Installation() {
   }
 
   return (
-    <section id="installation" className="relative py-12 md:py-16 px-4 overflow-hidden">
+    <section id="installation" className="relative py-12 sm:py-16 md:py-20 px-4 overflow-hidden">
       {/* Grid pattern overlay */}
       <div 
         className="absolute inset-0 opacity-30"
@@ -81,9 +81,9 @@ export default function Installation() {
         }}
       />
       
-      <div className="relative z-10 max-w-4xl mx-auto px-6 md:px-8 xl:px-12">
+      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 md:px-8 xl:px-12">
         <div className="text-center mb-6 md:mb-10">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-6">
             Installation
           </h2>
         </div>
@@ -106,19 +106,19 @@ export default function Installation() {
             ))}
           </div>
           
-          <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 hover:border-gray-700 transition-all duration-300 hover:bg-gray-900/90">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-400">
+          <div className="bg-gray-900 border border-gray-800 rounded-lg p-3 sm:p-4 hover:border-gray-700 transition-all duration-300 hover:bg-gray-900/90">
+            <div className="flex items-center justify-between mb-2 gap-2">
+              <span className="text-xs sm:text-sm text-gray-400 flex-1 min-w-0">
                 {installMethods[activeTab].description}
               </span>
               <button
                 onClick={() => copyCommand(installMethods[activeTab].command)}
-                className="text-gray-400 hover:text-white text-sm px-3 py-1 rounded border border-gray-700 hover:border-gray-600 transition-all duration-200 hover:scale-105 hover:bg-gray-800/50"
+                className="text-gray-400 hover:text-white text-xs sm:text-sm px-2 sm:px-3 py-1 rounded border border-gray-700 hover:border-gray-600 transition-all duration-200 hover:scale-105 hover:bg-gray-800/50 whitespace-nowrap"
               >
                 {copiedCommand === installMethods[activeTab].command ? 'Copied!' : 'Copy'}
               </button>
             </div>
-            <code className="text-emerald-400 text-lg font-mono">
+            <code className="text-emerald-400 text-sm sm:text-base md:text-lg font-mono break-all block">
               {installMethods[activeTab].command}
             </code>
           </div>
@@ -126,20 +126,20 @@ export default function Installation() {
 
         {/* Quick Start */}
         <div>
-          <h3 className="text-2xl font-bold mb-6">Usage</h3>
-          <div className="space-y-4">
+          <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Usage</h3>
+          <div className="space-y-3 sm:space-y-4">
             {quickStartCommands.map((item, index) => (
-              <div key={index} className="bg-gray-900 border border-gray-800 rounded-lg p-4 hover:border-gray-700 transition-all duration-300 hover:bg-gray-900/90 hover:scale-[1.02]">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-400">{item.description}</span>
+              <div key={index} className="bg-gray-900 border border-gray-800 rounded-lg p-3 sm:p-4 hover:border-gray-700 transition-all duration-300 hover:bg-gray-900/90 hover:scale-[1.02]">
+                <div className="flex items-center justify-between mb-2 gap-2">
+                  <span className="text-xs sm:text-sm text-gray-400 flex-1 min-w-0">{item.description}</span>
                   <button
                     onClick={() => copyCommand(item.command)}
-                    className="text-gray-400 hover:text-white text-sm px-3 py-1 rounded border border-gray-700 hover:border-gray-600 transition-all duration-200 hover:scale-105 hover:bg-gray-800/50"
+                    className="text-gray-400 hover:text-white text-xs sm:text-sm px-2 sm:px-3 py-1 rounded border border-gray-700 hover:border-gray-600 transition-all duration-200 hover:scale-105 hover:bg-gray-800/50 whitespace-nowrap"
                   >
                     {copiedCommand === item.command ? 'Copied!' : 'Copy'}
                   </button>
                 </div>
-                <code className="text-emerald-400 font-mono">{item.command}</code>
+                <code className="text-emerald-400 text-xs sm:text-sm md:text-base font-mono break-all block">{item.command}</code>
               </div>
             ))}
           </div>
