@@ -158,7 +158,11 @@ async function fetchPoliciesForLinting(
       pol.polcmd as command,
       pg_get_expr(pol.polqual, pol.polrelid) as using_expression,
       pg_get_expr(pol.polwithcheck, pol.polrelid) as with_check_expression,
-      pol.polroles::regrole[] as roles
+      ARRAY(
+        SELECT CASE WHEN r.oid = 0 THEN 'PUBLIC' ELSE r.rolname END
+        FROM unnest(pol.polroles) AS pr(oid)
+        LEFT JOIN pg_roles r ON r.oid = pr.oid
+      ) as roles
     FROM pg_policy pol
     JOIN pg_class cls ON pol.polrelid = cls.oid
     JOIN pg_namespace nsp ON cls.relnamespace = nsp.oid

@@ -14,6 +14,7 @@ import type {
   TableTestConfiguration
 } from '../shared/types.js';
 import { SUPPORTED_DATABASE_OPERATIONS, CONSOLE_MESSAGES } from '../shared/constants.js';
+import { type Logger } from '../shared/logger.js';
 import { updateTestCounters, loadPolicyConfig } from '../shared/test-utils.js';
 import { withDatabaseConnection } from '../shared/command-utils.js';
 import { executePromisesInParallel } from '../shared/parallel.js';

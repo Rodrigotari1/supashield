@@ -10,7 +10,7 @@ export const lintCommand = new Command('lint')
   .option('--json', 'Output results as JSON')
   .action(async (options) => {
     await withDatabaseConnection(options, async ({ pool, logger }) => {
-      logger.start('Linting RLS policies...');
+      if (!options.json) logger.start('Linting RLS policies...');
 
       const client = await pool.connect();
       let results: LintResults;
@@ -21,7 +21,7 @@ export const lintCommand = new Command('lint')
         client.release();
       }
 
-      logger.succeed('Policy linting complete.');
+      if (!options.json) logger.succeed('Policy linting complete.');
 
       if (options.json) {
         console.log(JSON.stringify(results, null, 2));
