@@ -10,6 +10,8 @@ export function updateTestCounters(
   results.total_tests++;
   if (result.passed) {
     results.passed_tests++;
+  } else if (result.actual === 'SKIPPED') {
+    results.skipped_tests++;
   } else if (result.actual === 'ERROR') {
     results.error_tests++;
   } else {

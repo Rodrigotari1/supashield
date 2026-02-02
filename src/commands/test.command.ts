@@ -1,48 +1,62 @@
 import { Command } from 'commander';
 import type { Pool } from 'pg';
-import { 
-  executeRlsPolicyProbeForOperation,
+import {
+  executeRlsPolicyProbeDetailed,
   fetchRealUserContext,
-  createJwtClaimsFromUser 
+  createJwtClaimsFromUser
 } from '../core/simulate.js';
 import type {
   PolicyConfig,
   TestResults,
   TestResultDetail,
   DatabaseOperation,
-  ProbeResult
+  ProbeResult,
+  TableTestConfiguration
 } from '../shared/types.js';
 import { SUPPORTED_DATABASE_OPERATIONS, CONSOLE_MESSAGES } from '../shared/constants.js';
-import { formatTestResult, formatSummary, type Logger } from '../shared/logger.js';
-import { updateTestCounters, exitWithTestResults, loadPolicyConfig } from '../shared/test-utils.js';
+import { updateTestCounters, loadPolicyConfig } from '../shared/test-utils.js';
 import { withDatabaseConnection } from '../shared/command-utils.js';
+import { executePromisesInParallel } from '../shared/parallel.js';
+import { formatTestResultsAsJson, printTestResultsForHumans } from '../shared/output.js';
 
 export const testCommand = new Command('test')
   .description('Test RLS policies for data leaks and access violations')
   .option('-u, --url <url>', 'Database connection URL')
   .option('--table <table>', 'Test only specific table (e.g. public.users)')
   .option('--as-user <email>', 'Test with specific user email/ID from auth.users')
+  .option('--parallel <number>', 'Number of parallel tests (default: 4, max: 10)', '4')
   .option('--all-schemas', 'Include system tables (auth, storage, etc.)')
+  .option('--json', 'Output results as JSON (AI-friendly)')
+  .option('--quiet', 'Only show failures and summary')
   .option('--verbose', 'Enable verbose logging')
   .action(async (options) => {
     const startTime = performance.now();
     let config = await loadPolicyConfig();
+    const isJson = options.json;
+    const isQuiet = options.quiet;
 
     await withDatabaseConnection(options, async ({ pool, logger }) => {
       if (options.asUser) {
-        logger.start(`Fetching user context for: ${options.asUser}`);
+        if (!isJson) logger.start(`Fetching user context for: ${options.asUser}`);
         const userContext = await fetchRealUserContext(pool, options.asUser);
         
         if (!userContext) {
-          logger.error(`User not found: ${options.asUser}`);
+          if (isJson) {
+            console.log(JSON.stringify({ error: `User not found: ${options.asUser}` }));
+          } else {
+            logger.error(`User not found: ${options.asUser}`);
+          }
           process.exit(1);
         }
         
-        logger.succeed(`Testing as: ${userContext.email} (${userContext.id})`);
+        if (!isJson) logger.succeed(`Testing as: ${userContext.email} (${userContext.id})`);
         config = await createConfigForRealUser(config, userContext, options.table);
       }
 
-      logger.start(CONSOLE_MESSAGES.RUNNING_TESTS);
+      const parallelism = Math.min(Math.max(parseInt(options.parallel) || 1, 1), 10);
+
+      if (!isJson) logger.start(CONSOLE_MESSAGES.RUNNING_TESTS);
+      
       const testResults = await executeAllPolicyTestsForConfiguration(
         pool,
         config,
@@ -50,20 +64,40 @@ export const testCommand = new Command('test')
           target_table: options.table,
           include_system_schemas: options.allSchemas,
           operations_to_test: SUPPORTED_DATABASE_OPERATIONS,
-          parallel_execution: false,
+          parallel_execution: parallelism > 1,
+          parallelism,
           verbose_logging: options.verbose,
+          quiet: isQuiet,
+          json: isJson,
         },
         logger
       );
-      logger.succeed('All tests complete.');
+      
+      if (!isJson) logger.succeed('Tests complete.');
 
       testResults.execution_time_ms = performance.now() - startTime;
 
-      logger.raw(formatSummary(testResults));
-      exitWithTestResults(testResults, logger);
+      if (isJson) {
+        console.log(JSON.stringify(formatTestResultsAsJson(testResults), null, 2));
+      } else {
+        printTestResultsForHumans(testResults, logger, isQuiet);
+      }
+      
+      const hasFailures = testResults.failed_tests > 0 || testResults.error_tests > 0;
+      process.exit(hasFailures ? 1 : 0);
     });
   });
 
+interface ExecutionConfig {
+  target_table?: string;
+  include_system_schemas?: boolean;
+  operations_to_test: readonly DatabaseOperation[];
+  parallel_execution: boolean;
+  parallelism?: number;
+  verbose_logging: boolean;
+  quiet?: boolean;
+  json?: boolean;
+}
 
 /**
  * Executes all policy tests defined in the configuration.
@@ -71,13 +105,7 @@ export const testCommand = new Command('test')
 async function executeAllPolicyTestsForConfiguration(
   pool: Pool,
   config: PolicyConfig,
-  executionConfig: {
-    target_table?: string;
-    include_system_schemas?: boolean;
-    operations_to_test: readonly DatabaseOperation[];
-    parallel_execution: boolean;
-    verbose_logging: boolean;
-  },
+  executionConfig: ExecutionConfig,
   logger: Logger
 ): Promise<TestResults> {
   const results: TestResults = {
@@ -85,45 +113,108 @@ async function executeAllPolicyTestsForConfiguration(
     passed_tests: 0,
     failed_tests: 0,
     error_tests: 0,
+    skipped_tests: 0,
     execution_time_ms: 0,
     detailed_results: [],
   };
 
-  for (const [tableKey, tableConfig] of Object.entries(config.tables)) {
+  const tableEntries = Object.entries(config.tables).filter(([tableKey]) => {
     if (executionConfig.target_table && tableKey !== executionConfig.target_table) {
-      continue;
+      return false;
     }
-    
-    // Skip system schemas unless explicitly requested
     if (!executionConfig.include_system_schemas && !tableKey.startsWith('public.')) {
-      continue;
+      return false;
     }
+    return true;
+  });
 
-    logger.raw(`\nTesting ${tableKey}:`);
+  const suppressOutput = executionConfig.json || executionConfig.quiet;
 
-    const [schema, table] = tableKey.split('.');
+  // Parallel execution - collect results silently, display after
+  if (executionConfig.parallel_execution && executionConfig.parallelism && executionConfig.parallelism > 1) {
+    const tableResults = await executeTablesInParallel(
+      pool,
+      tableEntries,
+      executionConfig.operations_to_test,
+      executionConfig.parallelism
+    );
 
-    for (const scenario of tableConfig.test_scenarios) {
-      logger.raw(`  ${scenario.name}:`);
+    tableResults.sort((a, b) => a.tableKey.localeCompare(b.tableKey));
 
-      const scenarioResults = await executeTestScenarioForAllOperations(
-        pool,
-        schema,
-        table,
-        scenario,
-        executionConfig.operations_to_test,
-        logger
-      );
-
-      results.detailed_results.push(...scenarioResults);
-
-      for (const result of scenarioResults) {
+    for (const tableResult of tableResults) {
+      results.detailed_results.push(...tableResult.allResults);
+      for (const result of tableResult.allResults) {
         updateTestCounters(results, result);
+      }
+    }
+  } else {
+    // Sequential execution
+    for (const [tableKey, tableConfig] of tableEntries) {
+      const [schema, table] = tableKey.split('.');
+
+      for (const scenario of tableConfig.test_scenarios) {
+        const scenarioResults = await executeTestScenarioForAllOperations(
+          pool,
+          schema,
+          table,
+          scenario,
+          executionConfig.operations_to_test
+        );
+
+        results.detailed_results.push(...scenarioResults);
+
+        for (const result of scenarioResults) {
+          updateTestCounters(results, result);
+        }
       }
     }
   }
 
   return results;
+}
+
+interface TableTestResult {
+  tableKey: string;
+  scenarios: Array<{
+    scenarioName: string;
+    results: TestResultDetail[];
+  }>;
+  allResults: TestResultDetail[];
+}
+
+async function executeTablesInParallel(
+  pool: Pool,
+  tableEntries: Array<[string, TableTestConfiguration]>,
+  operations: readonly DatabaseOperation[],
+  parallelism: number
+): Promise<TableTestResult[]> {
+  const promiseFactories = tableEntries.map(([tableKey, tableConfig]) =>
+    async () => {
+      const [schema, table] = tableKey.split('.');
+      const scenarios: Array<{ scenarioName: string; results: TestResultDetail[] }> = [];
+      const allResults: TestResultDetail[] = [];
+
+      for (const scenario of tableConfig.test_scenarios) {
+        const scenarioResults = await executeTestScenarioForAllOperations(
+          pool,
+          schema,
+          table,
+          scenario,
+          operations
+        );
+
+        scenarios.push({
+          scenarioName: scenario.name,
+          results: scenarioResults
+        });
+        allResults.push(...scenarioResults);
+      }
+
+      return { tableKey, scenarios, allResults };
+    }
+  );
+
+  return executePromisesInParallel(promiseFactories, parallelism);
 }
 
 /**
@@ -143,60 +234,37 @@ async function executeTestScenarioForAllOperations(
       DELETE?: ProbeResult;
     };
   },
-  operations: readonly DatabaseOperation[],
-  logger: Logger
+  operations: readonly DatabaseOperation[]
 ): Promise<TestResultDetail[]> {
   const results: TestResultDetail[] = [];
 
   for (const operation of operations) {
     const expected = scenario.expected[operation];
-    if (!expected) continue; // Skip if no expectation set
+    if (!expected) continue;
 
     const operationStartTime = performance.now();
 
-    try {
-      const actual = await executeRlsPolicyProbeForOperation(
-        pool,
-        schema,
-        table,
-        operation,
-        scenario.jwt_claims
-      );
+    const probeResult = await executeRlsPolicyProbeDetailed(
+      pool,
+      schema,
+      table,
+      operation,
+      scenario.jwt_claims
+    );
 
-      const operationEndTime = performance.now();
-      const passed = actual === expected;
+    const operationEndTime = performance.now();
+    const passed = probeResult.result === expected;
 
-      const resultDetail: TestResultDetail = {
-        table_key: `${schema}.${table}`,
-        scenario_name: scenario.name,
-        operation,
-        expected,
-        actual,
-        passed,
-        execution_time_ms: operationEndTime - operationStartTime,
-      };
-
-      results.push(resultDetail);
-
-      logger.raw(formatTestResult(resultDetail));
-
-    } catch (error) {
-      const operationEndTime = performance.now();
-      const errorMessage = error instanceof Error ? error.message : String(error);
-
-      logger.raw(`    🔥 ${operation}: ERROR - ${errorMessage}`);
-
-      results.push({
-        table_key: `${schema}.${table}`,
-        scenario_name: scenario.name,
-        operation,
-        expected,
-        actual: 'ERROR',
-        passed: false,
-        error_message: errorMessage,
-        execution_time_ms: operationEndTime - operationStartTime,
-      });
-    }
+    results.push({
+      table_key: `${schema}.${table}`,
+      scenario_name: scenario.name,
+      operation,
+      expected,
+      actual: probeResult.result,
+      passed: probeResult.result === 'SKIPPED' ? false : passed,
+      error_message: probeResult.reason,
+      execution_time_ms: operationEndTime - operationStartTime,
+    });
   }
 
   return results;

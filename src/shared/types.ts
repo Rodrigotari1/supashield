@@ -88,6 +88,7 @@ export interface TestResults {
   passed_tests: number;
   failed_tests: number;
   error_tests: number;
+  skipped_tests: number;
   execution_time_ms: number;
   detailed_results: TestResultDetail[];
 }
@@ -105,7 +106,7 @@ export interface TestResultDetail {
 
 // Enums for better type safety and elimination of magic strings
 export type DatabaseOperation = 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE';
-export type ProbeResult = 'ALLOW' | 'DENY' | 'ERROR';
+export type ProbeResult = 'ALLOW' | 'DENY' | 'ERROR' | 'SKIPPED';
 export type UserRole = 'anonymous' | 'authenticated' | string;
 
 export interface ColumnIntrospectionResult {

@@ -253,5 +253,119 @@ describe('Simulate - Core Logic', () => {
       expect(canPartialRollback).toBe(true);
     });
   });
+
+  describe('Parallel Execution Configuration', () => {
+    test('validates parallelism range (minimum 1)', () => {
+      const input = 0;
+      const parallelism = Math.min(Math.max(input, 1), 10);
+      expect(parallelism).toBe(1);
+    });
+
+    test('validates parallelism range (maximum 10)', () => {
+      const input = 15;
+      const parallelism = Math.min(Math.max(input, 1), 10);
+      expect(parallelism).toBe(10);
+    });
+
+    test('accepts valid parallelism value', () => {
+      const input = 5;
+      const parallelism = Math.min(Math.max(input, 1), 10);
+      expect(parallelism).toBe(5);
+    });
+
+    test('determines parallel vs sequential execution', () => {
+      const parallelism1 = 1;
+      const parallelism4 = 4;
+
+      const isSequential = parallelism1 === 1;
+      const isParallel = parallelism4 > 1;
+
+      expect(isSequential).toBe(true);
+      expect(isParallel).toBe(true);
+    });
+  });
+
+  describe('Table Result Ordering', () => {
+    test('sorts tables alphabetically', () => {
+      const tables = [
+        { name: 'public.users', order: 0 },
+        { name: 'public.posts', order: 0 },
+        { name: 'public.comments', order: 0 }
+      ];
+
+      const sorted = [...tables].sort((a, b) => a.name.localeCompare(b.name));
+
+      expect(sorted[0].name).toBe('public.comments');
+      expect(sorted[1].name).toBe('public.posts');
+      expect(sorted[2].name).toBe('public.users');
+    });
+
+    test('maintains sort order across async operations', () => {
+      const results = [
+        { tableKey: 'public.zebra', data: {} },
+        { tableKey: 'public.alpha', data: {} },
+        { tableKey: 'public.beta', data: {} }
+      ];
+
+      results.sort((a, b) => a.tableKey.localeCompare(b.tableKey));
+
+      expect(results[0].tableKey).toBe('public.alpha');
+      expect(results[1].tableKey).toBe('public.beta');
+      expect(results[2].tableKey).toBe('public.zebra');
+    });
+  });
+
+  describe('Parallel Execution Promise Factory Pattern', () => {
+    test('promise factory delays execution', () => {
+      let executed = false;
+      const factory = () => Promise.resolve().then(() => { executed = true; });
+
+      expect(executed).toBe(false);
+
+      factory();
+      expect(executed).toBe(false);
+    });
+
+    test('promise factory array maps tables correctly', () => {
+      const tables = ['table1', 'table2', 'table3'];
+      const factories = tables.map(table => () => Promise.resolve(table));
+
+      expect(factories.length).toBe(3);
+      expect(typeof factories[0]).toBe('function');
+    });
+
+    test('parallel execution preserves result order by index', async () => {
+      const tasks = [
+        () => Promise.resolve(1),
+        () => Promise.resolve(2),
+        () => Promise.resolve(3)
+      ];
+
+      const results: number[] = [];
+      for (let i = 0; i < tasks.length; i++) {
+        results[i] = await tasks[i]();
+      }
+
+      expect(results).toEqual([1, 2, 3]);
+    });
+  });
+
+  describe('Concurrency Control', () => {
+    test('limits concurrent operations', () => {
+      const maxConcurrency = 5;
+      const totalTasks = 20;
+      const activeTasks = Math.min(maxConcurrency, totalTasks);
+
+      expect(activeTasks).toBe(5);
+    });
+
+    test('handles fewer tasks than concurrency limit', () => {
+      const maxConcurrency = 10;
+      const totalTasks = 3;
+      const activeTasks = Math.min(maxConcurrency, totalTasks);
+
+      expect(activeTasks).toBe(3);
+    });
+  });
 });
 

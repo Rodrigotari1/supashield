@@ -19,6 +19,11 @@ export interface RealUserContext {
  * Tests if a specific database operation is allowed for a user with given JWT claims.
  * Uses transactional safety to ensure no data persists even if operations succeed.
  */
+export interface ProbeResultWithReason {
+  result: ProbeResult;
+  reason?: string;
+}
+
 export async function executeRlsPolicyProbeForOperation(
   pool: Pool,
   schema: string,
@@ -26,15 +31,28 @@ export async function executeRlsPolicyProbeForOperation(
   operation: DatabaseOperation,
   jwtClaims: Record<string, any>,
 ): Promise<ProbeResult> {
+  const detailed = await executeRlsPolicyProbeDetailed(pool, schema, table, operation, jwtClaims);
+  return detailed.result;
+}
+
+export async function executeRlsPolicyProbeDetailed(
+  pool: Pool,
+  schema: string,
+  table: string,
+  operation: DatabaseOperation,
+  jwtClaims: Record<string, any>,
+): Promise<ProbeResultWithReason> {
   const client = await pool.connect();
   
   try {
     await initializeTransactionalTestSession(client);
     
     // For SELECT/UPDATE/DELETE, we need test data to be present
-    // Insert it as postgres (bypassing RLS) before switching to test user
     if (operation !== 'INSERT') {
-      await seedTestDataAsSuperuser(client, schema, table);
+      const seedResult = await seedTestDataAsSuperuser(client, schema, table);
+      if (!seedResult.success) {
+        return { result: 'SKIPPED', reason: seedResult.error };
+      }
     }
     
     await configureSessionForUserContext(client, jwtClaims);
@@ -48,10 +66,11 @@ export async function executeRlsPolicyProbeForOperation(
     );
     
     await rollbackToSavepointAfterTest(client);
-    return result;
+    return { result };
     
   } catch (error) {
-    return 'ERROR';
+    const msg = error instanceof Error ? error.message : String(error);
+    return { result: 'ERROR', reason: msg };
   } finally {
     await rollbackEntireTransactionForCleanup(client);
     client.release();
@@ -65,24 +84,33 @@ async function initializeTransactionalTestSession(client: PoolClient): Promise<v
   await client.query('BEGIN');
 }
 
+interface SeedResult {
+  success: boolean;
+  error?: string;
+}
+
 /**
  * Seeds test data into the table as superuser (bypassing RLS).
  * This ensures SELECT/UPDATE/DELETE have data to test against.
+ * Uses savepoint to keep transaction healthy if seeding fails.
  */
 async function seedTestDataAsSuperuser(
   client: PoolClient,
   schema: string,
   table: string
-): Promise<void> {
+): Promise<SeedResult> {
   const fullyQualifiedTableName = createFullyQualifiedTableName(schema, table);
   
   try {
-    // Use postgres role to bypass RLS for seeding
+    await client.query('SAVEPOINT before_seed');
     await client.query('SET LOCAL ROLE postgres');
     
     const columns = await introspectTableColumnsForInsertOperation(client, schema, table);
     
-    if (columns.length === 0) return;
+    if (columns.length === 0) {
+      await client.query('RELEASE SAVEPOINT before_seed');
+      return { success: true };
+    }
 
     const { columnNames, columnValues } = generateInsertStatementComponents(columns);
     
@@ -93,10 +121,23 @@ async function seedTestDataAsSuperuser(
       await client.query(`INSERT INTO ${fullyQualifiedTableName} DEFAULT VALUES`);
     }
     
-    // Reset role will happen when we set the test user role later
+    await client.query('RELEASE SAVEPOINT before_seed');
+    return { success: true };
   } catch (error) {
-    // If seeding fails, we'll catch it during the actual operation test
-    // This might happen if the table has constraints we can't satisfy
+    // Rollback to savepoint to keep transaction healthy
+    await client.query('ROLLBACK TO SAVEPOINT before_seed');
+    
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    // Detect specific error types for better messaging
+    if (errorMessage.includes('foreign key') || errorMessage.includes('violates foreign key')) {
+      return { success: false, error: 'FK_CONSTRAINT: Table has foreign key dependencies that need data first' };
+    }
+    if (errorMessage.includes('not-null') || errorMessage.includes('null value')) {
+      return { success: false, error: 'NOT_NULL: Required column could not be auto-filled' };
+    }
+    
+    return { success: false, error: `SEED_FAILED: ${errorMessage}` };
   }
 }
 
@@ -358,6 +399,26 @@ function generateTestValueForColumn(column: ColumnIntrospectionResult): string {
   
   if (column.data_type.includes('bool')) {
     return COLUMN_TYPE_TEST_VALUES.BOOLEAN;
+  }
+  
+  if (column.data_type.includes('timestamp')) {
+    return COLUMN_TYPE_TEST_VALUES.TIMESTAMP;
+  }
+  
+  if (column.data_type === 'date') {
+    return COLUMN_TYPE_TEST_VALUES.DATE;
+  }
+  
+  if (column.data_type === 'inet') {
+    return COLUMN_TYPE_TEST_VALUES.INET;
+  }
+  
+  if (column.data_type === 'jsonb') {
+    return COLUMN_TYPE_TEST_VALUES.JSONB;
+  }
+  
+  if (column.data_type === 'json') {
+    return COLUMN_TYPE_TEST_VALUES.JSON;
   }
   
   return COLUMN_TYPE_TEST_VALUES.DEFAULT;

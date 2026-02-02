@@ -62,10 +62,18 @@ export function formatTestResult(result: {
   operation: string;
   actual: string;
   expected: string;
+  error_message?: string;
 }): string {
+  const operation = result.operation.padEnd(6, ' ');
+  
+  // Handle SKIPPED separately
+  if (result.actual === 'SKIPPED') {
+    const reason = result.error_message || 'Could not seed test data';
+    return `    ${chalk.yellow('SKIP')} ${operation}: ${chalk.yellow(reason)}`;
+  }
+  
   const status = result.passed ? 'PASS' : 'FAIL';
   const statusColor = result.passed ? chalk.green(status) : chalk.red(status);
-  const operation = result.operation.padEnd(6, ' ');
   const details = result.passed
     ? chalk.green(`${result.actual} (expected ${result.expected})`)
     : chalk.red(`${result.actual} (expected ${result.expected}) - MISMATCH!`);
@@ -83,6 +91,7 @@ export function formatSummary(results: {
   passed_tests: number;
   failed_tests: number;
   error_tests: number;
+  skipped_tests?: number;
   execution_time_ms: number;
 }): string {
   const summary = [
@@ -91,6 +100,10 @@ export function formatSummary(results: {
     chalk.green(`  Passed: ${results.passed_tests}`),
     chalk.red(`  Failed: ${results.failed_tests}`),
   ];
+
+  if (results.skipped_tests && results.skipped_tests > 0) {
+    summary.push(chalk.yellow(`  Skipped: ${results.skipped_tests} (tables need test data - run 'supashield audit' for details)`));
+  }
 
   if (results.error_tests > 0) {
     summary.push(chalk.red.bold(`  Errors: ${results.error_tests}`));
