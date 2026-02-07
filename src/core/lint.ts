@@ -155,7 +155,13 @@ async function fetchPoliciesForLinting(
       nsp.nspname as schema,
       cls.relname as table,
       pol.polname as policy_name,
-      pol.polcmd as command,
+      CASE pol.polcmd
+        WHEN 'r' THEN 'SELECT'
+        WHEN 'a' THEN 'INSERT'
+        WHEN 'w' THEN 'UPDATE'
+        WHEN 'd' THEN 'DELETE'
+        WHEN '*' THEN 'ALL'
+      END as command,
       pg_get_expr(pol.polqual, pol.polrelid) as using_expression,
       pg_get_expr(pol.polwithcheck, pol.polrelid) as with_check_expression,
       ARRAY(
