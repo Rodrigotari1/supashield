@@ -9,15 +9,18 @@ export interface ReadOnlyPool extends Pool {}
  * Ensures the connected role has appropriate permissions for safe RLS testing.
  */
 export async function establishValidatedDatabaseConnection(
-  connectionConfig: DatabaseConnectionConfig
+  connectionConfig: DatabaseConnectionConfig,
+  options: { silent?: boolean } = {}
 ): Promise<ReadOnlyPool> {
-  logSanitizedConnectionAttempt(connectionConfig.url);
+  if (!options.silent) {
+    logSanitizedConnectionAttempt(connectionConfig.url);
+  }
   
   try {
     const pool = await createDatabaseConnectionPool(connectionConfig);
     
     // The role validation is now always enabled by default for safety.
-    await validateDatabaseRolePrivileges(pool);
+    await validateDatabaseRolePrivileges(pool, options.silent);
     
     return pool;
   } catch (error) {
@@ -48,7 +51,7 @@ async function createDatabaseConnectionPool(
  * Validates that the current database role has appropriate privileges for safe testing.
  * For Supabase postgres role, allows with extra safety warnings.
  */
-async function validateDatabaseRolePrivileges(pool: Pool): Promise<void> {
+async function validateDatabaseRolePrivileges(pool: Pool, silent = false): Promise<void> {
   const client = await pool.connect();
   
   try {
@@ -57,14 +60,18 @@ async function validateDatabaseRolePrivileges(pool: Pool): Promise<void> {
     if (shouldRejectRoleForSafetyReasons(privileges)) {
       // Special handling for Supabase's default postgres role
       if (privileges.role_name === 'postgres') {
-        console.log('WARNING: Using Supabase postgres superuser role');
-        console.log('INFO: All operations use transactions and rollbacks for safety');
+        if (!silent) {
+          console.log('WARNING: Using Supabase postgres superuser role');
+          console.log('INFO: All operations use transactions and rollbacks for safety');
+        }
         return;
       }
       throw createUnsafeRoleError(privileges);
     }
     
-    logRoleValidationResult(privileges);
+    if (!silent) {
+      logRoleValidationResult(privileges);
+    }
     
   } finally {
     client.release();

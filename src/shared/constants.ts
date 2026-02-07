@@ -87,6 +87,12 @@ export const COLUMN_TYPE_TEST_VALUES = {
   INTEGER: '1',
   NUMERIC: '1',
   BOOLEAN: 'true',
+  TIMESTAMP: 'now()',
+  TIMESTAMPTZ: 'now()',
+  DATE: 'CURRENT_DATE',
+  INET: "'127.0.0.1'",
+  JSONB: "'{}'::jsonb",
+  JSON: "'{}'::json",
   DEFAULT: 'DEFAULT',
 } as const;
 
@@ -101,4 +107,18 @@ export const POSTGRESQL_SYSTEM_ROLES = {
 export const DEFAULT_TEST_SCENARIO_NAMES = {
   ANONYMOUS_USER: 'anonymous_user',
   AUTHENTICATED_USER: 'authenticated_user',
-} as const; 
+} as const;
+
+// Sensitive column patterns for security audit
+export const SENSITIVE_COLUMN_PATTERNS = [
+  /password/i,
+  /secret/i,
+  /token/i,
+  /ssn/i,
+  /social_security/i,
+  /credit_card/i,
+  /api_key/i,
+  /private_key/i,
+  /salary/i,
+  /bank_account/i,
+] as const; 

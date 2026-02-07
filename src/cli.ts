@@ -5,6 +5,7 @@ import { testCommand } from './commands/test.command.js';
 import { testStorageCommand } from './commands/test-storage.command.js';
 import { exportPgtapCommand } from './commands/export-pgtap.command.js';
 import { auditCommand } from './commands/audit.command.js';
+import { lintCommand } from './commands/lint.command.js';
 import { coverageCommand } from './commands/coverage.command.js';
 import { snapshotCommand } from './commands/snapshot.command.js';
 import { diffCommand } from './commands/diff.command.js';
@@ -53,6 +54,7 @@ program
   });
 
 program.addCommand(auditCommand);
+program.addCommand(lintCommand);
 program.addCommand(coverageCommand);
 program.addCommand(snapshotCommand);
 program.addCommand(diffCommand);

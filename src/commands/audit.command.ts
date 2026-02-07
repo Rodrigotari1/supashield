@@ -34,6 +34,7 @@ interface AuditResults {
   noPolices: SecurityIssue[];
   publicTables: SecurityIssue[];
   unsafeDefaultGrants: SecurityIssue[];
+  sensitiveColumnGrants: SecurityIssue[];
   totalIssues: number;
 }
 
@@ -43,19 +44,21 @@ async function runSecurityAudit(pool: Pool, includeSystemSchemas: boolean): Prom
     noPolices: [],
     publicTables: [],
     unsafeDefaultGrants: [],
+    sensitiveColumnGrants: [],
     totalIssues: 0,
   };
 
   const client = await pool.connect();
-  
+
   try {
     const tables = await fetchAllTables(client, includeSystemSchemas);
-    
+
     await checkForDisabledRls(client, tables, issues);
     await checkForMissingPolicies(client, tables, issues);
     await checkForUnsafeGrants(client, tables, issues);
+    await checkSensitiveColumnGrants(client, issues);
     await checkStorageBucketSecurity(client, tables, issues);
-    
+
     issues.totalIssues = calculateTotalIssues(issues);
 
   } finally {
@@ -171,9 +174,59 @@ async function checkForUnsafeGrants(
   }
 }
 
+async function checkSensitiveColumnGrants(
+  client: PoolClient,
+  issues: AuditResults
+) {
+  const { SENSITIVE_COLUMN_PATTERNS } = await import('../shared/constants.js');
+
+  const { rows: columnGrants } = await client.query(`
+    SELECT
+      table_schema,
+      table_name,
+      column_name,
+      grantee,
+      privilege_type
+    FROM information_schema.column_privileges
+    WHERE grantee IN ('anon', 'authenticated', 'public')
+      AND table_schema = 'public'
+    ORDER BY table_schema, table_name, column_name;
+  `);
+
+  for (const grant of columnGrants) {
+    const matchedPattern = findMatchingSensitivePattern(
+      grant.column_name,
+      SENSITIVE_COLUMN_PATTERNS
+    );
+
+    if (matchedPattern) {
+      const fullColumnName = `${grant.table_schema}.${grant.table_name}.${grant.column_name}`;
+      issues.sensitiveColumnGrants.push({
+        severity: 'HIGH',
+        category: 'SENSITIVE_COLUMN_EXPOSED',
+        table: fullColumnName,
+        description: `Column matching sensitive pattern '${matchedPattern}' is accessible to '${grant.grantee}'`,
+        remediation: `REVOKE ${grant.privilege_type} (${grant.column_name}) ON ${grant.table_schema}.${grant.table_name} FROM ${grant.grantee};`
+      });
+    }
+  }
+}
+
+function findMatchingSensitivePattern(
+  columnName: string,
+  patterns: readonly RegExp[]
+): string | null {
+  for (const pattern of patterns) {
+    if (pattern.test(columnName)) {
+      return pattern.source.replace(/\//gi, '').replace(/\\i/gi, '');
+    }
+  }
+  return null;
+}
+
 async function checkStorageBucketSecurity(
-  client: PoolClient, 
-  tables: Array<{schema: string, table_name: string, rls_enabled: boolean}>, 
+  client: PoolClient,
+  tables: Array<{schema: string, table_name: string, rls_enabled: boolean}>,
   issues: AuditResults
 ) {
   try {
@@ -212,10 +265,11 @@ async function checkStorageBucketSecurity(
 }
 
 function calculateTotalIssues(issues: AuditResults): number {
-  return issues.rlsDisabled.length + 
-         issues.noPolices.length + 
-         issues.publicTables.length + 
-         issues.unsafeDefaultGrants.length;
+  return issues.rlsDisabled.length +
+         issues.noPolices.length +
+         issues.publicTables.length +
+         issues.unsafeDefaultGrants.length +
+         issues.sensitiveColumnGrants.length;
 }
 
 function displayAuditResults(issues: AuditResults): void {
@@ -263,6 +317,16 @@ function displayAuditResults(issues: AuditResults): void {
     console.log('HIGH: Public storage buckets');
     issues.publicTables.forEach(issue => {
       console.log(`  Bucket: ${issue.table}`);
+      console.log(`  Issue:  ${issue.description}`);
+      console.log(`  Fix:    ${issue.remediation}`);
+      console.log('');
+    });
+  }
+
+  if (issues.sensitiveColumnGrants.length > 0) {
+    console.log('HIGH: Sensitive column exposed');
+    issues.sensitiveColumnGrants.forEach(issue => {
+      console.log(`  Column: ${issue.table}`);
       console.log(`  Issue:  ${issue.description}`);
       console.log(`  Fix:    ${issue.remediation}`);
       console.log('');

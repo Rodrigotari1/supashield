@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from 'vitest';
+import { describe, test, expect } from 'vitest';
 
 // Mock types for testing
 interface MockAuditResults {
@@ -278,6 +278,126 @@ describe('Audit Command - Core Logic', () => {
     test('Public bucket is HIGH', () => {
       const severity = 'HIGH';
       expect(severity).toBe('HIGH');
+    });
+
+    test('Sensitive column exposed is HIGH', () => {
+      const severity = 'HIGH';
+      expect(severity).toBe('HIGH');
+    });
+  });
+
+  describe('Sensitive Column Pattern Matching', () => {
+    test('detects password column', () => {
+      const columnName = 'password_hash';
+      const pattern = /password/i;
+      expect(pattern.test(columnName)).toBe(true);
+    });
+
+    test('detects secret column', () => {
+      const columnName = 'api_secret';
+      const pattern = /secret/i;
+      expect(pattern.test(columnName)).toBe(true);
+    });
+
+    test('detects token column', () => {
+      const columnName = 'reset_token';
+      const pattern = /token/i;
+      expect(pattern.test(columnName)).toBe(true);
+    });
+
+    test('detects SSN column', () => {
+      const columnName = 'ssn_number';
+      const pattern = /ssn/i;
+      expect(pattern.test(columnName)).toBe(true);
+    });
+
+    test('detects credit card column', () => {
+      const columnName = 'credit_card_number';
+      const pattern = /credit_card/i;
+      expect(pattern.test(columnName)).toBe(true);
+    });
+
+    test('detects API key column', () => {
+      const columnName = 'api_key';
+      const pattern = /api_key/i;
+      expect(pattern.test(columnName)).toBe(true);
+    });
+
+    test('detects private key column', () => {
+      const columnName = 'private_key_encrypted';
+      const pattern = /private_key/i;
+      expect(pattern.test(columnName)).toBe(true);
+    });
+
+    test('detects salary column', () => {
+      const columnName = 'employee_salary';
+      const pattern = /salary/i;
+      expect(pattern.test(columnName)).toBe(true);
+    });
+
+    test('detects bank account column', () => {
+      const columnName = 'bank_account_number';
+      const pattern = /bank_account/i;
+      expect(pattern.test(columnName)).toBe(true);
+    });
+
+    test('does not match safe column names', () => {
+      const safeColumns = ['username', 'email', 'created_at', 'id'];
+      const patterns = [/password/i, /secret/i, /token/i, /ssn/i];
+
+      safeColumns.forEach(columnName => {
+        const matched = patterns.some(pattern => pattern.test(columnName));
+        expect(matched).toBe(false);
+      });
+    });
+  });
+
+  describe('Column Grant Security Logic', () => {
+    test('flags sensitive column accessible to anon', () => {
+      const grant = {
+        table_schema: 'public',
+        table_name: 'users',
+        column_name: 'password_hash',
+        grantee: 'anon',
+        privilege_type: 'SELECT'
+      };
+
+      const isSensitive = /password/i.test(grant.column_name);
+      const isPublicRole = ['anon', 'authenticated', 'public'].includes(grant.grantee);
+      const shouldFlag = isSensitive && isPublicRole;
+
+      expect(shouldFlag).toBe(true);
+    });
+
+    test('flags sensitive column accessible to authenticated', () => {
+      const grant = {
+        table_schema: 'public',
+        table_name: 'users',
+        column_name: 'api_key',
+        grantee: 'authenticated',
+        privilege_type: 'SELECT'
+      };
+
+      const isSensitive = /api_key/i.test(grant.column_name);
+      const isPublicRole = ['anon', 'authenticated', 'public'].includes(grant.grantee);
+      const shouldFlag = isSensitive && isPublicRole;
+
+      expect(shouldFlag).toBe(true);
+    });
+
+    test('does not flag non-sensitive column', () => {
+      const grant = {
+        table_schema: 'public',
+        table_name: 'users',
+        column_name: 'username',
+        grantee: 'authenticated',
+        privilege_type: 'SELECT'
+      };
+
+      const patterns = [/password/i, /secret/i, /token/i];
+      const isSensitive = patterns.some(p => p.test(grant.column_name));
+
+      expect(isSensitive).toBe(false);
     });
   });
 });

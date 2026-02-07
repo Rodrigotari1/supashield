@@ -111,7 +111,7 @@ function collectWarnings(report: CoverageReport): string[] {
 
 function printWarnings(warnings: string[]) {
   if (warnings.length === 0) {
-    console.log(chalk.green('✓ No security warnings detected'));
+    console.log(chalk.green('No security warnings detected'));
     console.log('');
     return;
   }

@@ -8,11 +8,14 @@ Catch Supabase RLS security vulnerabilities before they reach production.
 
 ## Features
 - Security vulnerability detection
+- RLS policy static analysis (lint)
 - RLS coverage reporting (see what each role can access)
 - Policy change detection (snapshot & diff)
 - Smart schema discovery  
 - RLS policy testing (tables + storage buckets)
 - Real user context testing
+- Parallel test execution
+- JSON output for AI/CI integration
 - CI/CD ready
 - Zero configuration
 
@@ -36,9 +39,13 @@ Get this from: **Supabase Dashboard → Settings → Database → Connection str
 ## Quick Start
 ```bash
 supashield audit                       # scan for common RLS security issues
+supashield lint                        # static analysis of policy expressions
 supashield coverage                    # generate RLS coverage report
 supashield init                        # discover tables and storage buckets
 supashield test                        # test all table RLS policies
+supashield test --json                 # output as JSON (for AI/CI)
+supashield test --quiet                # only show failures
+supashield test --parallel 8           # run 8 tests in parallel (default: 4)
 supashield test-storage                # test storage bucket RLS policies
 supashield test --table public.users   # test specific table
 supashield test --as-user admin@company.com  # test with real user
@@ -49,16 +56,15 @@ supashield export-pgtap -o tests.sql   # export tests to pgTap format
 ```
 
 ### Example Output
-Testing public.users:
-  anonymous_user:
-    SELECT: ALLOW (expected DENY) - MISMATCH
-    INSERT: DENY (expected DENY) - PASS
-  authenticated_user:
-    SELECT: ALLOW (expected ALLOW) - PASS
-    INSERT: DENY (expected ALLOW) - MISMATCH
+```
+INSECURE - 1 critical issue(s) found
 
-Results: 2 passed, 2 failed
-2 policy mismatches detected
+CRITICAL ISSUES (potential data leaks):
+  public.payments: anonymous_user can SELECT
+    Anonymous users can access this data - missing RLS policy
+    FIX: CREATE POLICY "payments_deny_anon_select" ON public.payments FOR SELECT TO anon USING (false);
+
+Tests: 43 passed, 2 failed, 0 skipped (1234ms)
 ```
 
 ## Configuration (`.supashield/policy.yaml`)
@@ -103,6 +109,16 @@ storage_buckets:
   env:
     SUPASHIELD_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
 ```
+
+## AI-Assisted Development
+
+If you're coding with AI (Cursor, Claude Code, etc.), use `--json` output:
+
+```bash
+supashield test --json
+```
+
+The structured output lets your AI understand exactly what's wrong and suggest fixes.
 
 ## Safety
 - All operations use transactions and rollbacks
